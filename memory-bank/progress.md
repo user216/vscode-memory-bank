@@ -11,6 +11,7 @@
 - **Documentation**: Architecture overview + individual layer docs (all 7 layers documented)
 - **ADRs**: 4 accepted decisions (compatibility, architecture, no-PRD, no-model-pinning)
 - **Model management**: `memory-bank-config.json` + `scripts/update-model.sh`
+- **README.md**: Repository documentation with quick start, architecture overview, install instructions
 - Memory bank self-documenting (this project uses its own memory bank structure)
 
 ## What Remains
@@ -22,7 +23,7 @@
 - [ ] Layer 5: MCP server (TypeScript, SQLite + FTS5) — planned
 - [ ] Layer 6: VS Code extension — planned
 - [ ] Real-world testing of Layers 0-4 in an actual project
-- [ ] README.md for the repository
+- [x] README.md for the repository
 
 ## Known Issues
 - Hook scripts require `jq` to be installed (`sudo apt install jq`)
