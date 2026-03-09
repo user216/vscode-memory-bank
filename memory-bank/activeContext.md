@@ -1,15 +1,15 @@
 # Active Context
 
 ## Current Focus
-All 7 layers built and fully standards-compliant as a Copilot plugin. Ready for real-world testing.
+All 7 layers built and fully standards-compliant as a Copilot plugin. MCP server now has 9 tools (6 read + 3 write). PreToolUse hook enforces MCP-first reads. Ready for real-world testing.
 
 ## Recent Changes
-- Added Copilot plugin manifests (`.github/plugin/marketplace.json`, `.claude-plugin/marketplace.json`)
-- Added portable MCP config (`.vscode/mcp.json` with `${workspaceFolder}` paths)
-- Added standard community files (`CONTRIBUTING.md`, `SECURITY.md`)
+- Added 3 MCP write tools: `memory_create_task`, `memory_update_status`, `memory_save_context`
+- Added PreToolUse hook (`enforce-mcp-reads.sh`) — blocks Read/Grep/Glob on memory-bank/, forces MCP tools
+- Hook configured in `.claude/settings.json` (Claude Code) and `hooks/memory-hooks.json` (Copilot)
+- MCP server now has 9 tools total (6 read + 3 write)
+- Added Copilot plugin manifests and standard community files
 - Extension v0.2.0: Knowledge Graph webview, MCP server lifecycle, improved status bar icons
-- MCP status bar shows "Memory Bank MCP" with circle icons (checkmark/slash/X for running/stopped/error)
-- Updated all instruction files (Layers 0-3) to prioritize MCP tools over raw file reads
 
 ## Current Decisions
 - No model pinning: agents inherit user's default (ADR-0004)
