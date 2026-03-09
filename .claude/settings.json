@@ -1,16 +1,2 @@
 {
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read|Grep|Glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "./hooks/scripts/enforce-mcp-reads.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ]
-  }
 }

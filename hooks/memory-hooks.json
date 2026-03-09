@@ -1,19 +1,5 @@
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read|Grep|Glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "./hooks/scripts/enforce-mcp-reads.sh",
-            "linux": "./hooks/scripts/enforce-mcp-reads.sh",
-            "osx": "./hooks/scripts/enforce-mcp-reads.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "type": "command",
