@@ -1,5 +1,26 @@
 # Tech Context
 
+## Agent Identity — CRITICAL
+**The AI agent in this project is the Claude Agent Preview running inside VS Code via the GitHub Copilot extension's Claude Agent SDK.** It is NOT Claude Code CLI. These are different products:
+
+| | Claude Agent Preview (this project) | Claude Code CLI |
+|---|---|---|
+| Runtime | VS Code + GitHub Copilot extension | Standalone terminal CLI |
+| Billing | GitHub Copilot subscription | Anthropic subscription |
+| Slash commands | `/agents`, `/hooks`, `/memory`, `/init` | Different command set |
+| Documentation | [VS Code Claude Agent Preview](https://code.visualstudio.com/docs/copilot/agents/third-party-agents#_claude-agent-preview) | [code.claude.com](https://code.claude.com) |
+
+**Never refer to yourself as Claude Code. You are the Claude Agent running inside VS Code Copilot.**
+
+## MCP Configuration — CRITICAL
+**The Claude Agent SDK in VS Code reads MCP servers from `.mcp.json` at the project root.** NOT from `.vscode/mcp.json`. This has been verified through practical testing.
+
+| File | Path | Used by Claude Agent SDK? |
+|------|------|--------------------------|
+| **`.mcp.json`** | `<project-root>/.mcp.json` | **YES — this is the correct config** |
+| `.vscode/mcp.json` | `<project-root>/.vscode/mcp.json` | **NO — not read by the agent** |
+| `.claude/settings.json` | `<project-root>/.claude/settings.json` | Claude Code CLI only |
+
 ## Target Platform
 - **IDE**: VS Code (1.106+)
 - **AI Extension**: GitHub Copilot extension with Claude Agent SDK (agent mode)
@@ -14,7 +35,7 @@
 | Prompt Files | `.github/prompts/` | `.prompt.md` (YAML frontmatter + markdown) |
 | Custom Agents | `.github/agents/` | `.agent.md` (YAML frontmatter + markdown) |
 | Hooks | `.github/hooks/` | `.json` (hook configuration) |
-| MCP Servers | `.vscode/mcp.json` | JSON (MCP server configuration) |
+| MCP Servers | **`.mcp.json`** (project root) | JSON (MCP server configuration) |
 
 ## Key Technologies (planned)
 - **Layers 0-4**: Pure markdown, YAML, JSON, shell scripts — no compiled code
