@@ -17,6 +17,7 @@ export class McpServerManager implements vscode.Disposable {
       49,
     );
     this.statusItem.command = "memoryBank.toggleMcp";
+    this.setStatus("stopped");
   }
 
   async start(): Promise<void> {
@@ -110,17 +111,17 @@ export class McpServerManager implements vscode.Disposable {
   private setStatus(state: "running" | "stopped" | "error"): void {
     switch (state) {
       case "running":
-        this.statusItem.text = "$(database) MCP";
+        this.statusItem.text = "$(pass-filled) Memory Bank MCP";
         this.statusItem.tooltip = "Memory Bank MCP server running — click to stop";
         this.statusItem.backgroundColor = undefined;
         break;
       case "stopped":
-        this.statusItem.text = "$(debug-disconnect) MCP";
+        this.statusItem.text = "$(circle-slash) Memory Bank MCP";
         this.statusItem.tooltip = "Memory Bank MCP server stopped — click to start";
         this.statusItem.backgroundColor = undefined;
         break;
       case "error":
-        this.statusItem.text = "$(error) MCP";
+        this.statusItem.text = "$(error) Memory Bank MCP";
         this.statusItem.tooltip = "Memory Bank MCP server error — click to retry";
         this.statusItem.backgroundColor = new vscode.ThemeColor(
           "statusBarItem.errorBackground",

@@ -1,21 +1,22 @@
 # Active Context
 
 ## Current Focus
-All 7 layers are built. Layer 6 (VS Code extension) has been scaffolded with sidebar tree views, status bar, commands, and file watcher. The project is ready for real-world testing and Marketplace packaging.
+All 7 layers are built. Layer 6 VS Code extension is feature-complete with sidebar, status bar, Knowledge Graph webview, and embedded MCP server lifecycle. Ready for real-world testing.
 
 ## Recent Changes
-- Fixed test isolation: `db-sync.test.ts` now uses temp directories to avoid vitest parallel race conditions (65/65 tests pass)
-- Fixed `update-model.sh`: now adds `model:` field to agents that don't have one, supports `--remove` flag, `jq`-optional
-- Fixed all hook scripts: `jq`-optional fallbacks, fixed stop hook's infinite loop prevention (marker file instead of non-existent `stop_hook_active` field)
-- Refined Planner agent: added read-only `tools` declaration, structured plan output format
-- Refined Worker agent: added "run tests after changes" rule
-- Built Layer 6 VS Code extension (`extension/`):
-  - Sidebar tree views: Files, Tasks, Decisions with status icons and color indicators
-  - Status bar: shows current focus from activeContext.md + task count
-  - Commands: refresh, openFile, init (scaffolds a new memory bank)
-  - FileSystemWatcher: auto-refreshes views on `.md` changes
-  - Extension settings: `memoryBank.statusBar.enabled`, `memoryBank.fileWatcher.enabled`
-  - Builds cleanly with TypeScript, targets VS Code 1.95+
+- Built Knowledge Graph webview (`extension/src/webview/knowledge-graph.ts`):
+  - Interactive force-directed graph visualization (Canvas 2D, no external dependencies)
+  - Scans core files, tasks, and decisions; extracts cross-references via `TASK-\d+|ADR-\d{4}` regex
+  - Drag support, hover tooltips, double-click to open files in editor
+  - Color-coded nodes: blue (core), green (task), yellow (decision)
+- Built MCP server lifecycle manager (`extension/src/mcp/server-manager.ts`):
+  - Start/stop/toggle MCP server as child process
+  - Auto-discovers server at workspace `mcp/build/index.js` or extension-bundled path
+  - Status bar indicator (running/stopped/error) with click-to-toggle
+  - Output channel for server logs
+  - Passes `MEMORY_BANK_PATH` environment variable to server
+- Updated all instruction files (Layers 0-3) to prioritize MCP tools over raw file reads
+- Extension packaged as VSIX (v0.1.0) and installed for testing — sidebar and status bar confirmed working
 
 ## Current Decisions
 - No model pinning: agents inherit user's default (ADR-0004)
@@ -25,8 +26,4 @@ All 7 layers are built. Layer 6 (VS Code extension) has been scaffolded with sid
 - Memory bank replaces PRD, ADRs kept for immutable decision history (ADR-0003)
 
 ## Next Steps
-1. Package extension as VSIX and test in VS Code
-2. Add Knowledge Graph webview (interactive visualization of links)
-3. Add embedded MCP server lifecycle management in extension
-4. Real-world testing across different projects
-5. Publish to VS Code Marketplace
+1. Real-world testing across different projects
