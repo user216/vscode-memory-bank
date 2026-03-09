@@ -1,7 +1,6 @@
 ---
 description: 'Read Memory Bank and present full project context summary'
 mode: 'agent'
-tools: ['codebase', 'search']
 ---
 
 # Review Memory Bank

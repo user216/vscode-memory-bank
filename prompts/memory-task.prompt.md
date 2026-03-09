@@ -1,7 +1,6 @@
 ---
 description: 'Create, update, or query tasks in the Memory Bank'
 mode: 'agent'
-tools: ['editFiles', 'codebase', 'search']
 ---
 
 # Manage Memory Bank Tasks

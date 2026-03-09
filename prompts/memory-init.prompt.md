@@ -1,7 +1,6 @@
 ---
 description: 'Initialize Memory Bank structure for the current project'
 mode: 'agent'
-tools: ['editFiles', 'codebase', 'search', 'fetch']
 ---
 
 # Initialize Memory Bank

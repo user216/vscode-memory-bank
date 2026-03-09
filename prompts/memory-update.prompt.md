@@ -1,7 +1,6 @@
 ---
 description: 'Review and update all Memory Bank files to reflect current project state'
 mode: 'agent'
-tools: ['editFiles', 'codebase', 'search']
 ---
 
 # Update Memory Bank

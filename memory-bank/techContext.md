@@ -2,8 +2,8 @@
 
 ## Target Platform
 - **IDE**: VS Code (1.106+)
-- **AI Extension**: GitHub Copilot with agent mode
-- **AI Model**: Claude (via Claude Agent SDK)
+- **AI Extension**: GitHub Copilot extension with Claude Agent SDK (agent mode)
+- **AI Models**: Claude Opus 4 (latest) — quality-first, used for all agents
 - **OS**: Linux (primary), macOS, Windows
 
 ## VS Code Customization Primitives Used

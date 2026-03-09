@@ -26,9 +26,9 @@ Use a 7-layer progressive enhancement architecture where each layer adds capabil
 | Layer | VS Code Primitive | Key Capability Added |
 |-------|-------------------|---------------------|
 | 0 | Custom Instructions | Core memory bank conventions (original instruction) |
-| 1 | Agent Skill | Portable bundle with templates + scripts |
+| 1 | Agent Skill | On-demand bundle with templates + scripts |
 | 2 | Prompt Files | User-invoked slash commands |
-| 3 | Custom Agents | Plan/Act personas with specialized tool sets |
+| 3 | Custom Agents | Plan/Act personas with full tool access, guided by instructions |
 | 4 | Hooks | Automatic lifecycle capture/injection |
 | 5 | MCP Server | Structured queries, FTS, token budgeting |
 | 6 | VS Code Extension | UI panels, file watchers, editor events |

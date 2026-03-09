@@ -1,8 +1,8 @@
 ---
 name: Memory Worker
 description: Act mode agent that executes implementation plans and updates Memory Bank with progress.
-tools: ['editFiles', 'codebase', 'search', 'runCommands', 'usages', 'fetch']
-model: ['Claude Sonnet 4', 'Claude Opus 4.5']
+tools: ['editFiles', 'codebase', 'search', 'runCommands', 'usages', 'fetch', 'githubRepo', 'findTestFiles', 'testFailures', 'problems']
+model: 'Claude Opus 4'
 handoffs:
   - label: Review & Plan Next
     agent: memory-planner

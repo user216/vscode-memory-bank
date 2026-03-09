@@ -14,16 +14,16 @@ AI coding assistants lose all context between sessions and during context compac
 - Synthesize best features from 9+ existing memory MCP projects into a cohesive, opinionated solution
 
 ## Non-Goals
-- Supporting Claude Desktop, Claude Code CLI, or Cursor as primary targets
+- Supporting other clients (Claude Desktop, Claude Code CLI, Cursor) — this targets VS Code + GitHub Copilot + Claude Agent SDK exclusively
 - Replacing or forking the original memory-bank instruction — we extend it additively
-- Building a general-purpose memory system for arbitrary AI agents
+- Building a general-purpose memory system for arbitrary AI agents or non-Claude models
 - Enterprise features (multi-user, cloud sync, authentication)
 
 ## Architecture: 7 Layers
 | Layer | Primitive | Purpose | Dependency |
 |-------|-----------|---------|------------|
 | 0 | Custom Instructions | Always-on memory bank conventions | None |
-| 1 | Agent Skill | Portable capability with templates/scripts | Layer 0 |
+| 1 | Agent Skill | On-demand capability with templates/scripts | Layer 0 |
 | 2 | Prompt Files | User-invoked workflows (/memory-*) | Layer 0 |
 | 3 | Custom Agents | Plan/Act mode personas with handoffs | Layers 0-2 |
 | 4 | Hooks | Automatic lifecycle capture/injection | Layers 0-1 |

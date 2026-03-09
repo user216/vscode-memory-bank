@@ -9,7 +9,7 @@ Layer 5: MCP Server (structured queries, search, token budgeting)
 Layer 4: Hooks (automatic lifecycle capture/injection)
 Layer 3: Custom Agents (Plan/Act personas, handoffs)
 Layer 2: Prompt Files (user-invoked workflows)
-Layer 1: Agent Skill (portable capability bundle)
+Layer 1: Agent Skill (on-demand capability bundle)
 Layer 0: Custom Instructions (always-on conventions) ← original memory-bank instruction
 ```
 
@@ -53,9 +53,9 @@ projectbrief.md          ← foundation document
 
 ## Component Relationships
 - Instructions (L0) define the conventions all other layers follow
-- Skills (L1) bundle instructions + templates + scripts for portability
+- Skills (L1) bundle instructions + templates + scripts, loaded on-demand when relevant
 - Prompts (L2) provide user-facing slash commands that invoke skill workflows
-- Agents (L3) are personas that use prompts and skills with specialized tool sets
+- Agents (L3) are personas that use prompts and skills with all available tools, guided by instructions
 - Hooks (L4) automate what instructions tell the agent to do manually
 - MCP (L5) provides capabilities that file tools cannot (search, token budgeting)
 - Extension (L6) provides UI and editor events that MCP cannot access
