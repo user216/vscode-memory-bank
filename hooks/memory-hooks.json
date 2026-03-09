@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "./hooks/scripts/session-start.sh",
+        "linux": "./hooks/scripts/session-start.sh",
+        "osx": "./hooks/scripts/session-start.sh",
+        "windows": "powershell -File ./hooks/scripts/session-start.ps1",
+        "timeout": 10
+      }
+    ],
+    "PreCompact": [
+      {
+        "type": "command",
+        "command": "./hooks/scripts/pre-compact.sh",
+        "linux": "./hooks/scripts/pre-compact.sh",
+        "osx": "./hooks/scripts/pre-compact.sh",
+        "windows": "powershell -File ./hooks/scripts/pre-compact.ps1",
+        "timeout": 10
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "./hooks/scripts/session-stop.sh",
+        "linux": "./hooks/scripts/session-stop.sh",
+        "osx": "./hooks/scripts/session-stop.sh",
+        "windows": "powershell -File ./hooks/scripts/session-stop.ps1",
+        "timeout": 10
+      }
+    ]
+  }
+}
