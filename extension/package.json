@@ -69,6 +69,18 @@
         "command": "memoryBank.init",
         "title": "Initialize Memory Bank",
         "category": "Memory Bank"
+      },
+      {
+        "command": "memoryBank.showGraph",
+        "title": "Show Knowledge Graph",
+        "icon": "$(type-hierarchy)",
+        "category": "Memory Bank"
+      },
+      {
+        "command": "memoryBank.toggleMcp",
+        "title": "Toggle MCP Server",
+        "icon": "$(database)",
+        "category": "Memory Bank"
       }
     ],
     "menus": {

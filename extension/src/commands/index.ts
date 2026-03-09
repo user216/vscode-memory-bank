@@ -3,13 +3,17 @@ import { MemoryBankTreeProvider } from "../sidebar/tree-provider.js";
 import { TasksTreeProvider } from "../sidebar/tasks-provider.js";
 import { DecisionsTreeProvider } from "../sidebar/decisions-provider.js";
 import { MemoryBankStatusBar } from "../statusbar/status-bar.js";
+import { McpServerManager } from "../mcp/server-manager.js";
+import { KnowledgeGraphPanel } from "../webview/knowledge-graph.js";
 
 export interface Providers {
   filesProvider: MemoryBankTreeProvider;
   tasksProvider: TasksTreeProvider;
   decisionsProvider: DecisionsTreeProvider;
   statusBar: MemoryBankStatusBar | undefined;
+  mcpManager: McpServerManager | undefined;
   mbRoot: vscode.Uri;
+  extensionUri: vscode.Uri;
 }
 
 export function registerCommands(
@@ -98,6 +102,17 @@ export function registerCommands(
       providers.tasksProvider.refresh();
       providers.decisionsProvider.refresh();
       providers.statusBar?.refresh();
+    }),
+
+    vscode.commands.registerCommand("memoryBank.showGraph", () => {
+      KnowledgeGraphPanel.createOrShow(
+        providers.extensionUri,
+        providers.mbRoot,
+      );
+    }),
+
+    vscode.commands.registerCommand("memoryBank.toggleMcp", () => {
+      providers.mcpManager?.toggle();
     }),
   );
 }
