@@ -1,9 +1,9 @@
 # Layer 6: VS Code Extension
 
-**Status:** Planned
+**Status:** Scaffolded (sidebar, status bar, commands, file watcher)
 **VS Code Primitive:** VS Code Extension (Marketplace)
 **Dependencies:** All layers
-**Directory:** `extension/` (future)
+**Directory:** `extension/`
 
 ## What It Will Do
 

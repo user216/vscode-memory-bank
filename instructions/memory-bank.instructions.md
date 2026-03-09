@@ -8,6 +8,23 @@ I am an AI coding assistant with a **memory that resets completely between sessi
 
 **I MUST read ALL memory bank files at the start of every task.** This is non-negotiable.
 
+## MCP-First Principle
+
+When Memory Bank MCP tools are available, **always prefer them** over reading raw files:
+
+| Operation | MCP Tool (preferred) | File Fallback |
+|-----------|---------------------|---------------|
+| Load session context | `memory_recall` (token-budgeted) | Read each `.md` file manually |
+| Search across memories | `memory_search` (full-text FTS5) | Grep through files |
+| Query tasks/decisions | `memory_query` (by type, status, date) | Read `_index.md` files |
+| Track relationships | `memory_link` (typed edges) | Add references in markdown |
+| Explore connections | `memory_graph` (BFS traversal) | Read files and follow references |
+| Discover data model | `memory_schema` | Inspect folder structure |
+
+The MCP tools provide structured, searchable, token-efficient access to the same data stored in the markdown files. **Writing** is always done to the markdown files — MCP tools are read-only and sync automatically.
+
+If no MCP server is configured, fall back to reading files directly. All workflows below work with or without MCP.
+
 ## Memory Bank Structure
 
 ```mermaid
@@ -41,7 +58,7 @@ flowchart TD
 ### Plan Mode
 ```mermaid
 flowchart TD
-    Start[Start] --> ReadMB[Read Memory Bank]
+    Start[Start] --> ReadMB[Load Context via MCP\nor Read Files]
     ReadMB --> CheckFiles{All Files\nComplete?}
     CheckFiles -->|No| Plan[Create Plan to\nUpdate Files]
     CheckFiles -->|Yes| Verify[Verify Context]
@@ -53,10 +70,11 @@ flowchart TD
 ### Act Mode
 ```mermaid
 flowchart TD
-    Start[Start] --> Context[Check Memory Bank]
+    Start[Start] --> Context[Load Context via MCP\nor Read Files]
     Context --> Update[Update Documentation]
     Update --> Execute[Execute Task]
     Execute --> Document[Document Changes]
+    Execute --> Link[Create Links via MCP\nif available]
 ```
 
 ### Task Management
@@ -90,7 +108,7 @@ flowchart TD
     Next --> Update[Update Files]
 ```
 
-When user says **"update memory bank"**, I must review ALL memory bank files, paying special attention to activeContext.md, progress.md, and the tasks/ folder.
+When user says **"update memory bank"**, I must review ALL memory bank files, paying special attention to activeContext.md, progress.md, and the tasks/ folder. After updating files, use `memory_link` to record relationships between tasks, decisions, and context files if MCP is available.
 
 ## Project Intelligence
 
@@ -147,9 +165,9 @@ The `tasks/` folder contains:
 ```
 
 ### Task Commands
-- **add/create task** — Creates a new task file with unique ID, documents thought process, creates implementation plan, updates index
+- **add/create task** — Creates a new task file with unique ID, documents thought process, creates implementation plan, updates index. Use `memory_link` to connect tasks to related ADRs if MCP is available.
 - **update task [ID]** — Adds progress log entry, updates subtask statuses, syncs index
-- **show tasks [filter]** — Displays tasks filtered by: `all`, `active`, `pending`, `completed`, `blocked`, `recent`, `tag:[name]`, `priority:[level]`
+- **show tasks [filter]** — Use `memory_query` (type: task, status filter) if MCP is available, otherwise read `tasks/_index.md`. Filters: `all`, `active`, `pending`, `completed`, `blocked`, `recent`, `tag:[name]`, `priority:[level]`
 
 ## Decisions Management
 

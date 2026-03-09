@@ -10,15 +10,22 @@ set -euo pipefail
 
 INPUT=$(cat)
 
-# Check for infinite loop prevention
-STOP_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false')
-if [ "$STOP_ACTIVE" = "true" ]; then
-  # Already in a stop hook cycle — do not block again
+# Infinite loop prevention: use a marker file so the hook only blocks once per session.
+# The old approach relied on a non-existent `stop_hook_active` field in the hook input.
+MARKER_DIR="${TMPDIR:-/tmp}"
+MARKER_FILE="$MARKER_DIR/mbvmb-stop-hook-$$"
+
+if [ -f "$MARKER_FILE" ]; then
   echo '{}'
   exit 0
 fi
 
-CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+# Determine workspace root
+if command -v jq &>/dev/null; then
+  CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+else
+  CWD=$(echo "$INPUT" | grep -o '"cwd"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"cwd"[[:space:]]*:[[:space:]]*"//;s/"$//' || true)
+fi
 if [ -z "$CWD" ]; then
   CWD="$(pwd)"
 fi
@@ -32,18 +39,27 @@ fi
 
 # Check if activeContext.md was modified in the last 5 minutes
 if [ -f "$MEMORY_BANK/activeContext.md" ]; then
+  # Cross-platform stat: GNU (Linux) then BSD (macOS)
   LAST_MODIFIED=$(stat -c %Y "$MEMORY_BANK/activeContext.md" 2>/dev/null || stat -f %m "$MEMORY_BANK/activeContext.md" 2>/dev/null || echo 0)
   NOW=$(date +%s)
   DIFF=$((NOW - LAST_MODIFIED))
 
   if [ "$DIFF" -gt 300 ]; then
-    # activeContext.md hasn't been updated in over 5 minutes — ask agent to update
-    jq -n '{
-      "hookSpecificOutput": {
-        "decision": "block",
-        "reason": "Memory Bank: activeContext.md has not been updated this session. Please update memory-bank/activeContext.md and memory-bank/progress.md with the current session state before ending."
-      }
-    }'
+    # Create marker so we don't block again if the hook re-fires
+    touch "$MARKER_FILE"
+    # Clean up marker after 10 minutes (background, ignore errors)
+    (sleep 600 && rm -f "$MARKER_FILE" &) 2>/dev/null
+
+    if command -v jq &>/dev/null; then
+      jq -n '{
+        "hookSpecificOutput": {
+          "decision": "block",
+          "reason": "Memory Bank: activeContext.md has not been updated this session. Please update memory-bank/activeContext.md and memory-bank/progress.md with the current session state before ending."
+        }
+      }'
+    else
+      printf '{"hookSpecificOutput":{"decision":"block","reason":"Memory Bank: activeContext.md has not been updated this session. Please update memory-bank/activeContext.md and memory-bank/progress.md with the current session state before ending."}}\n'
+    fi
     exit 0
   fi
 fi

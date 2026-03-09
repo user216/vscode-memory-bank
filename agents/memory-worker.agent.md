@@ -14,6 +14,13 @@ handoffs:
 You are in **Act Mode**. You execute implementation plans and document your progress in the Memory Bank.
 
 ## Startup Protocol
+**If Memory Bank MCP tools are available** (preferred):
+1. Call `memory_recall` with `priority: "active"` to load current focus and in-progress tasks
+2. Call `memory_query` with `type: "task"` and `status: "In Progress"` to find active tasks
+3. If a specific task ID was mentioned, use `memory_search` to find it and `memory_graph` to see its connections
+4. Understand what needs to be done before writing any code
+
+**If MCP tools are not available** (fallback):
 1. Read memory-bank/activeContext.md for current focus
 2. Read memory-bank/tasks/_index.md for active tasks
 3. Read the specific task file if an ID was mentioned
@@ -29,6 +36,7 @@ You are in **Act Mode**. You execute implementation plans and document your prog
   - Update progress.md if milestones are reached
   - Add new patterns to systemPatterns.md if discovered
   - Update techContext.md if new dependencies are added
+  - Use `memory_link` to connect items (tasks to ADRs, dependencies) if MCP available
 
 ## Rules
 - ALWAYS read context before starting work
@@ -36,3 +44,4 @@ You are in **Act Mode**. You execute implementation plans and document your prog
 - ALWAYS update activeContext.md after significant changes
 - Record any decisions made during implementation as ADRs
 - When blocked, hand off to Memory Planner for strategy
+- Run tests after code changes to verify nothing is broken

@@ -10,8 +10,12 @@ set -euo pipefail
 # Read hook input from stdin
 INPUT=$(cat)
 
-# Determine workspace root
-CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+# Determine workspace root — try jq first, fall back to pwd
+if command -v jq &>/dev/null; then
+  CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+else
+  CWD=$(echo "$INPUT" | grep -o '"cwd"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"cwd"[[:space:]]*:[[:space:]]*"//;s/"$//' || true)
+fi
 if [ -z "$CWD" ]; then
   CWD="$(pwd)"
 fi
@@ -20,12 +24,15 @@ MEMORY_BANK="$CWD/memory-bank"
 
 # Check if memory bank exists
 if [ ! -d "$MEMORY_BANK" ]; then
-  # No memory bank — provide hint to initialize
-  jq -n '{
-    "hookSpecificOutput": {
-      "additionalContext": "No memory-bank/ folder found in this workspace. You can initialize one by running /memory-init or creating the folder structure manually."
-    }
-  }'
+  if command -v jq &>/dev/null; then
+    jq -n '{
+      "hookSpecificOutput": {
+        "additionalContext": "No memory-bank/ folder found in this workspace. You can initialize one by running /memory-init or creating the folder structure manually."
+      }
+    }'
+  else
+    printf '{"hookSpecificOutput":{"additionalContext":"No memory-bank/ folder found in this workspace. You can initialize one by running /memory-init or creating the folder structure manually."}}\n'
+  fi
   exit 0
 fi
 
@@ -34,23 +41,35 @@ CONTEXT=""
 
 if [ -f "$MEMORY_BANK/activeContext.md" ]; then
   ACTIVE=$(cat "$MEMORY_BANK/activeContext.md")
-  CONTEXT="## Active Context\n$ACTIVE\n\n"
+  CONTEXT="## Active Context
+$ACTIVE
+
+"
 fi
 
 if [ -f "$MEMORY_BANK/progress.md" ]; then
   PROGRESS=$(cat "$MEMORY_BANK/progress.md")
-  CONTEXT="${CONTEXT}## Progress\n$PROGRESS\n\n"
+  CONTEXT="${CONTEXT}## Progress
+$PROGRESS
+
+"
 fi
 
 if [ -f "$MEMORY_BANK/tasks/_index.md" ]; then
   TASKS=$(cat "$MEMORY_BANK/tasks/_index.md")
-  CONTEXT="${CONTEXT}## Tasks\n$TASKS"
+  CONTEXT="${CONTEXT}## Tasks
+$TASKS"
 fi
 
 if [ -n "$CONTEXT" ]; then
-  # Escape for JSON
-  ESCAPED=$(echo -e "$CONTEXT" | jq -Rs .)
-  echo "{\"hookSpecificOutput\":{\"additionalContext\":$ESCAPED}}"
+  if command -v jq &>/dev/null; then
+    ESCAPED=$(printf '%s' "$CONTEXT" | jq -Rs .)
+    echo "{\"hookSpecificOutput\":{\"additionalContext\":$ESCAPED}}"
+  else
+    # Escape for JSON manually: backslashes, quotes, newlines, tabs
+    ESCAPED=$(printf '%s' "$CONTEXT" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+    printf '{"hookSpecificOutput":{"additionalContext":"%s"}}\n' "$ESCAPED"
+  fi
 else
   echo '{}'
 fi

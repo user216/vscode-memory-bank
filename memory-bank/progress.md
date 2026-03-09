@@ -6,12 +6,13 @@
 - **Layer 0**: Custom instruction file (`instructions/memory-bank.instructions.md`) — additive extension of original
 - **Layer 1**: Agent skill (`skills/managing-memory-bank/SKILL.md`) + templates (projectbrief, task, decision)
 - **Layer 2**: Prompt files — `/memory-init`, `/memory-update`, `/memory-review`, `/memory-task`
-- **Layer 3**: Custom agents — Memory Planner (plan mode) + Memory Worker (act mode) with handoffs
-- **Layer 4**: Hooks — SessionStart (inject context), PreCompact (preserve context), Stop (ensure save)
-- **Layer 5**: MCP server (`mcp/`) — TypeScript, SQLite + FTS5, 6 tools (search, query, recall, link, graph, schema), stdio transport, auto cross-reference detection, file watcher
+- **Layer 3**: Custom agents — Memory Planner (plan mode, read-only tools) + Memory Worker (act mode) with handoffs
+- **Layer 4**: Hooks — SessionStart (inject context), PreCompact (preserve context), Stop (ensure save) — all `jq`-optional
+- **Layer 5**: MCP server (`mcp/`) — TypeScript, SQLite + FTS5, 6 tools (search, query, recall, link, graph, schema), 65 tests all passing
+- **Layer 6**: VS Code extension (`extension/`) — sidebar (Files/Tasks/Decisions tree views), status bar, commands, file watcher, builds cleanly
 - **Documentation**: Architecture overview + individual layer docs (all 7 layers documented)
 - **ADRs**: 4 accepted decisions (compatibility, architecture, no-PRD, no-model-pinning)
-- **Model management**: `memory-bank-config.json` + `scripts/update-model.sh`
+- **Model management**: `memory-bank-config.json` + `scripts/update-model.sh` (add/update/remove model pinning)
 - **README.md**: Repository documentation with quick start, architecture overview, install instructions
 - Memory bank self-documenting (this project uses its own memory bank structure)
 
@@ -22,17 +23,20 @@
 - [x] Layer 3: Custom agents with handoffs
 - [x] Layer 4: Hook configuration + scripts
 - [x] Layer 5: MCP server (TypeScript, SQLite + FTS5)
-- [ ] Layer 6: VS Code extension — planned
-- [ ] Real-world testing of Layers 0-5 in an actual project
+- [x] Layer 6: VS Code extension — scaffolded (sidebar, status bar, commands, file watcher)
+- [ ] Layer 6: Knowledge Graph webview
+- [ ] Layer 6: Embedded MCP server lifecycle
+- [ ] Layer 6: VSIX packaging and Marketplace publishing
+- [ ] Real-world testing across different projects
 - [x] README.md for the repository
 
 ## Known Issues
-- Hook scripts require `jq` to be installed (`sudo apt install jq`)
-- `update-model.sh` currently only adds `model:` field to agents that already have one — for agents without a `model:` field (current default), the script would need to insert the field
-- Planner/Worker agent split is untested in real workflows — unclear if handoffs work smoothly in practice
 - MCP server requires `npm install && npx tsc` to build before use
+- Extension requires `npm install && npm run build` before loading in VS Code
 - Semantic search (ONNX embeddings) not yet implemented — FTS5 keyword search only for now
+- Knowledge Graph webview not yet built (Layer 6 planned feature)
+- Extension Marketplace publishing not yet done
 
 ## Overall Status
-Phase: Layers 0-5 complete, Layer 6 planned
-Completion: ~80% (Layers 0-5 built, Layer 6 planned)
+Phase: All 7 layers built, refinement and packaging remaining
+Completion: ~90% (all layers built, remaining: webview, packaging, real-world testing)

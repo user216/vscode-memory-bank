@@ -1,26 +1,37 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as path from "node:path";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import { initDb, getDb, closeDb } from "../src/db.js";
 import { syncAllFiles, syncSingleFile } from "../src/sync.js";
 
-const FIXTURES_PATH = path.resolve(
+const FIXTURES_SRC = path.resolve(
   import.meta.dirname,
   "fixtures",
   "memory-bank",
 );
-const TEST_DB_DIR = path.join(FIXTURES_PATH, ".mcp");
+
+// Each test run copies fixtures to a temp dir to avoid conflicts with
+// other test files that share the same fixtures path (vitest runs files in parallel).
+let FIXTURES_PATH: string;
+
+function copyFixtures(): string {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mbvmb-dbsync-"));
+  fs.cpSync(FIXTURES_SRC, tmp, { recursive: true, filter: (src) => !src.includes(".mcp") });
+  return tmp;
+}
 
 function cleanup(): void {
   closeDb();
-  if (fs.existsSync(TEST_DB_DIR)) {
-    fs.rmSync(TEST_DB_DIR, { recursive: true });
+  if (FIXTURES_PATH && fs.existsSync(FIXTURES_PATH)) {
+    fs.rmSync(FIXTURES_PATH, { recursive: true });
   }
 }
 
 describe("Database", () => {
   beforeEach(() => {
     cleanup();
+    FIXTURES_PATH = copyFixtures();
   });
 
   afterEach(() => {
@@ -71,6 +82,7 @@ describe("Database", () => {
 describe("Sync", () => {
   beforeEach(() => {
     cleanup();
+    FIXTURES_PATH = copyFixtures();
     initDb(FIXTURES_PATH);
   });
 
@@ -240,6 +252,7 @@ describe("Sync", () => {
 describe("FTS5", () => {
   beforeEach(() => {
     cleanup();
+    FIXTURES_PATH = copyFixtures();
     initDb(FIXTURES_PATH);
     syncAllFiles(FIXTURES_PATH);
   });

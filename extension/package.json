@@ -1,0 +1,110 @@
+{
+  "name": "vscode-memory-bank",
+  "displayName": "Memory Bank",
+  "description": "Persistent AI project memory across sessions — structured documentation, search, and knowledge graph for GitHub Copilot agents.",
+  "version": "0.1.0",
+  "publisher": "narayanaya",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/narayanaya/vscode-memory-bank"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "memory-bank",
+    "copilot",
+    "ai",
+    "context",
+    "documentation"
+  ],
+  "activationEvents": [
+    "workspaceContains:memory-bank/projectbrief.md"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "memory-bank",
+          "title": "Memory Bank",
+          "icon": "media/memory-bank.svg"
+        }
+      ]
+    },
+    "views": {
+      "memory-bank": [
+        {
+          "id": "memoryBankFiles",
+          "name": "Files"
+        },
+        {
+          "id": "memoryBankTasks",
+          "name": "Tasks"
+        },
+        {
+          "id": "memoryBankDecisions",
+          "name": "Decisions"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "memoryBank.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "Memory Bank"
+      },
+      {
+        "command": "memoryBank.openFile",
+        "title": "Open File",
+        "category": "Memory Bank"
+      },
+      {
+        "command": "memoryBank.init",
+        "title": "Initialize Memory Bank",
+        "category": "Memory Bank"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "memoryBank.refresh",
+          "when": "view =~ /^memoryBank/",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Memory Bank",
+      "properties": {
+        "memoryBank.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show memory bank status in the status bar."
+        },
+        "memoryBank.fileWatcher.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Watch memory bank files for changes and auto-refresh views."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.95.0",
+    "typescript": "^5.5.0"
+  }
+}

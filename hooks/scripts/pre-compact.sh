@@ -10,7 +10,11 @@ set -euo pipefail
 
 INPUT=$(cat)
 
-CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+if command -v jq &>/dev/null; then
+  CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
+else
+  CWD=$(echo "$INPUT" | grep -o '"cwd"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"cwd"[[:space:]]*:[[:space:]]*"//;s/"$//' || true)
+fi
 if [ -z "$CWD" ]; then
   CWD="$(pwd)"
 fi
@@ -22,9 +26,6 @@ if [ ! -d "$MEMORY_BANK" ]; then
   exit 0
 fi
 
-# Create a timestamped backup of activeContext before compaction
-TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-
 if [ -f "$MEMORY_BANK/activeContext.md" ]; then
   # Add a compaction marker to the active context
   {
@@ -35,6 +36,10 @@ if [ -f "$MEMORY_BANK/activeContext.md" ]; then
 fi
 
 # Return a system message so the agent knows compaction happened
-jq -n '{
-  "systemMessage": "Memory Bank: activeContext.md has been preserved before compaction. After compaction, re-read memory-bank/activeContext.md to restore context."
-}'
+if command -v jq &>/dev/null; then
+  jq -n '{
+    "systemMessage": "Memory Bank: activeContext.md has been preserved before compaction. After compaction, re-read memory-bank/activeContext.md to restore context."
+  }'
+else
+  printf '{"systemMessage":"Memory Bank: activeContext.md has been preserved before compaction. After compaction, re-read memory-bank/activeContext.md to restore context."}\n'
+fi
