@@ -14,6 +14,7 @@
 - **ADRs**: 4 accepted decisions (compatibility, architecture, no-PRD, no-model-pinning)
 - **Model management**: `memory-bank-config.json` + `scripts/update-model.sh` (add/update/remove model pinning)
 - **README.md**: Repository documentation with quick start, architecture overview, install instructions
+- **Plugin compliance**: Copilot plugin manifests (`.github/plugin/`, `.claude-plugin/`), portable MCP config (`.vscode/mcp.json`), community files (`CONTRIBUTING.md`, `SECURITY.md`)
 - Memory bank self-documenting (this project uses its own memory bank structure)
 
 ## What Remains
@@ -26,6 +27,7 @@
 - [x] Layer 6: VS Code extension — complete (sidebar, status bar, commands, file watcher, Knowledge Graph, MCP lifecycle)
 - [x] Layer 6: Knowledge Graph webview
 - [x] Layer 6: Embedded MCP server lifecycle
+- [x] Copilot plugin manifests and community files
 - [ ] Real-world testing across different projects
 - [x] README.md for the repository
 
