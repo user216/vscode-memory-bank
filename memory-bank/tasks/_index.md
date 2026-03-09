@@ -1,13 +1,13 @@
 # Tasks Index
 
 ## In Progress
-- [TASK-001](TASK-001-initial-scaffolding.md) — Initial project scaffolding and memory bank setup
+_None_
 
 ## Pending
 _None_
 
 ## Completed
-_None_
+- [TASK-001](TASK-001-initial-scaffolding.md) — Initial project scaffolding and memory bank setup
 
 ## Abandoned
 _None_
