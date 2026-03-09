@@ -9,7 +9,7 @@ vscode-memory-bank uses a progressive enhancement architecture. Each layer build
 │  Layer 6: VS Code Extension                  [PLANNED]  │
 │  UI panels, file watchers, editor events                │
 ├─────────────────────────────────────────────────────────┤
-│  Layer 5: MCP Server                         [PLANNED]  │
+│  Layer 5: MCP Server                         [BUILT]    │
 │  Structured queries, FTS, token budgeting               │
 ├─────────────────────────────────────────────────────────┤
 │  Layer 4: Hooks                              [BUILT]    │
@@ -41,7 +41,7 @@ Each layer is optional. You can use:
 - Layers 0-2 (add slash commands)
 - Layers 0-3 (add Plan/Act agent personas)
 - Layers 0-4 (add automatic lifecycle hooks)
-- Layers 0-5 (add structured search and token budgeting, future)
+- Layers 0-5 (add structured search and token budgeting)
 - Layers 0-6 (add VS Code UI, future)
 
 ### 3. Graceful Degradation

@@ -19,7 +19,7 @@ AI assistants lose all context between sessions. Every new chat starts from zero
 | 2 | Prompt Files | `/memory-init`, `/memory-update`, `/memory-review`, `/memory-task` commands | Built |
 | 3 | Custom Agents | Memory Planner (plan mode) + Memory Worker (act mode) with handoffs | Built |
 | 4 | Hooks | Session lifecycle automation (inject context, preserve on compact, save on exit) | Built |
-| 5 | MCP Server | Structured search, token budgeting, knowledge graph (TypeScript + SQLite) | Planned |
+| 5 | MCP Server | Structured search, token budgeting, knowledge graph (SQLite + FTS5) | Built |
 | 6 | VS Code Extension | Sidebar UI, status bar, file watchers, one-click install | Planned |
 
 See [docs/architecture.md](docs/architecture.md) for the full design and [docs/layers/](docs/layers/) for per-layer documentation.
@@ -118,6 +118,53 @@ See [ADR-0004](memory-bank/decisions/ADR-0004-no-model-version-pinning.md) for t
 - VS Code with GitHub Copilot extension
 - Claude Agent SDK (Claude models only)
 - `jq` for hook scripts (Layer 4)
+- Node.js 20+ for MCP server (Layer 5)
+
+## MCP Server (Layer 5)
+
+Six tools for structured memory access:
+
+| Tool | Purpose |
+|------|---------|
+| `memory_search` | Full-text search with FTS5 (AND, OR, NOT, prefix*) |
+| `memory_query` | Structured query by type, status, date range |
+| `memory_recall` | Token-budgeted context retrieval with priority strategies |
+| `memory_link` | Create typed relationships between items |
+| `memory_graph` | Traverse knowledge graph from a starting item |
+| `memory_schema` | Self-describing schema for tool discovery |
+
+Build and configure:
+
+```bash
+cd mcp && npm install && npx tsc
+```
+
+Add to `.vscode/mcp.json` in your project:
+
+```json
+{
+  "servers": {
+    "memory-bank": {
+      "command": "node",
+      "args": ["/path/to/vscode-memory-bank/mcp/build/index.js"],
+      "env": {
+        "MEMORY_BANK_PATH": "${workspaceFolder}/memory-bank"
+      }
+    }
+  }
+}
+```
+
+## Testing
+
+```bash
+cd mcp && npm test
+```
+
+65 tests across 3 test files:
+- **parser.test.ts** — 28 tests: ID derivation, type inference, metadata extraction, sections, cross-references
+- **db-sync.test.ts** — 17 tests: schema creation, file sync, FTS5 indexing, cross-ref link detection, re-sync
+- **tools.test.ts** — 20 tests: search, query, recall strategies, link creation, graph traversal, schema
 
 ## Design Decisions
 

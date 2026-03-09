@@ -8,6 +8,7 @@
 - **Layer 2**: Prompt files — `/memory-init`, `/memory-update`, `/memory-review`, `/memory-task`
 - **Layer 3**: Custom agents — Memory Planner (plan mode) + Memory Worker (act mode) with handoffs
 - **Layer 4**: Hooks — SessionStart (inject context), PreCompact (preserve context), Stop (ensure save)
+- **Layer 5**: MCP server (`mcp/`) — TypeScript, SQLite + FTS5, 6 tools (search, query, recall, link, graph, schema), stdio transport, auto cross-reference detection, file watcher
 - **Documentation**: Architecture overview + individual layer docs (all 7 layers documented)
 - **ADRs**: 4 accepted decisions (compatibility, architecture, no-PRD, no-model-pinning)
 - **Model management**: `memory-bank-config.json` + `scripts/update-model.sh`
@@ -20,16 +21,18 @@
 - [x] Layer 2: Prompt files
 - [x] Layer 3: Custom agents with handoffs
 - [x] Layer 4: Hook configuration + scripts
-- [ ] Layer 5: MCP server (TypeScript, SQLite + FTS5) — planned
+- [x] Layer 5: MCP server (TypeScript, SQLite + FTS5)
 - [ ] Layer 6: VS Code extension — planned
-- [ ] Real-world testing of Layers 0-4 in an actual project
+- [ ] Real-world testing of Layers 0-5 in an actual project
 - [x] README.md for the repository
 
 ## Known Issues
 - Hook scripts require `jq` to be installed (`sudo apt install jq`)
 - `update-model.sh` currently only adds `model:` field to agents that already have one — for agents without a `model:` field (current default), the script would need to insert the field
 - Planner/Worker agent split is untested in real workflows — unclear if handoffs work smoothly in practice
+- MCP server requires `npm install && npx tsc` to build before use
+- Semantic search (ONNX embeddings) not yet implemented — FTS5 keyword search only for now
 
 ## Overall Status
-Phase: Layers 0-4 complete, ready for testing
-Completion: ~60% (Layers 0-4 built, Layers 5-6 planned)
+Phase: Layers 0-5 complete, Layer 6 planned
+Completion: ~80% (Layers 0-5 built, Layer 6 planned)

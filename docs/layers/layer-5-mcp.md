@@ -1,32 +1,31 @@
 # Layer 5: MCP Server
 
-**Status:** Planned
+**Status:** Built
 **VS Code Primitive:** MCP Servers (`.vscode/mcp.json`)
 **Dependencies:** Layers 0-4
-**Directory:** `mcp/` (future)
+**Directory:** `mcp/`
 
-## What It Will Do
+## What It Does
 
 Layer 5 adds a Model Context Protocol server that provides capabilities beyond what file-based tools can offer. While Layers 0-4 work entirely through file read/write operations and shell scripts, the MCP server provides structured queries, full-text search, token budgeting, and knowledge graph operations.
 
-This layer is only justified when the memory bank grows large enough that file-based search becomes insufficient, or when you need features like semantic search, relationship traversal, or token-aware context injection.
+Markdown files remain the source of truth. The MCP server syncs them into SQLite + FTS5 on startup and watches for changes.
 
-## What It Will Add Over Layers 0-4
+## What It Adds Over Layers 0-4
 
 | Feature | Layers 0-4 | Layer 5 |
 |---------|------------|---------|
-| Search across memories | Grep/file read (reads entire files) | FTS5 full-text search with column prefixes |
-| Semantic search | Not possible | Local ONNX embeddings (no API calls) |
-| Token budgeting | Agent guesses what fits | Server calculates token costs, trims responses |
+| Search across memories | Grep/file read (reads entire files) | FTS5 full-text search with highlighted excerpts |
+| Token budgeting | Agent guesses what fits | Server calculates token costs, trims to budget |
 | Knowledge graph queries | Manual file cross-referencing | Typed relationships with graph traversal |
-| Deduplication | Agent does it ad-hoc | Server enforces uniquely |
-| Concurrent sessions | File locking issues possible | Server handles concurrency |
-| Import/export | Files ARE the format | Bidirectional markdown ↔ structured DB sync |
+| Structured queries | Read files, parse manually | Query by type, status, date range |
+| Concurrent sessions | File locking issues possible | SQLite WAL mode handles concurrency |
+| Cross-references | Manual | Auto-detected from ADR-NNNN / TASK-NNN patterns |
 
-## Planned Architecture
+## Architecture
 
 ```
-VS Code Copilot (Claude Opus 4)
+VS Code Copilot (Claude Opus latest)
     │
     ├── MCP tools (structured queries)
     │       │
@@ -34,8 +33,10 @@ VS Code Copilot (Claude Opus 4)
     │   MCP Server (TypeScript, stdio mode)
     │       │
     │       ▼
-    │   SQLite + FTS5
-    │   └── Optional: local ONNX embeddings
+    │   SQLite + FTS5 (read cache)
+    │       │
+    │       ▼ syncs from
+    │   memory-bank/*.md files (source of truth)
     │
     └── File tools (fallback, always available)
             │
@@ -43,43 +44,66 @@ VS Code Copilot (Claude Opus 4)
         memory-bank/*.md files
 ```
 
-## Key Design Decisions (to be formalized as ADRs)
+## Tools
 
-- **TypeScript** — aligns with VS Code / Claude Agent SDK ecosystem
-- **SQLite + FTS5** — zero external dependencies, single-file database per workspace
-- **Stdio transport** — simplest integration, no HTTP server to manage
-- **Markdown sync** — the MCP server reads/writes the same markdown files from Layers 0-4, keeping them as the source of truth
-- **Local embeddings only** — no API calls for semantic search (privacy-first)
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `memory_search` | Full-text search across all memory bank content | `query`, `type?`, `limit?` |
+| `memory_query` | Structured queries by type, status, date range | `type?`, `status?`, `since?`, `until?` |
+| `memory_recall` | Token-budgeted context retrieval for session start | `budget?`, `priority?` (foundational/recent/active) |
+| `memory_link` | Create typed relationships between memory items | `source`, `target`, `relation` |
+| `memory_graph` | Traverse knowledge graph from a starting item | `item`, `depth?`, `direction?` |
+| `memory_schema` | Self-describing schema for tool discovery | (none) |
 
-## Planned Tools
+### `memory_recall` Priority Strategies
 
-Based on research of ConPort, memory-keeper, and other MCP projects:
+- **foundational** — projectbrief first, then productContext, systemPatterns, techContext, activeContext, progress, tasks, decisions
+- **recent** — most recently updated items first
+- **active** — activeContext first, then in-progress tasks, then proposed decisions, then everything else
 
-| Tool | Purpose |
-|------|---------|
-| `memory_search` | Full-text search across all memory bank content |
-| `memory_query` | Structured queries by type, date, status |
-| `memory_recall` | Token-budgeted context retrieval for session start |
-| `memory_link` | Create typed relationships between memory items |
-| `memory_graph` | Traverse knowledge graph from a starting item |
-| `memory_schema` | Self-describing schema for tool discovery |
+## File Structure
 
-## Graceful Degradation
+```
+mcp/
+├── package.json
+├── tsconfig.json
+├── .gitignore
+├── src/
+│   ├── index.ts              # Entry point: create server, register tools, connect stdio
+│   ├── db.ts                 # SQLite schema, connection, WAL mode
+│   ├── sync.ts               # Markdown → SQLite sync + file watcher
+│   ├── parser.ts             # Markdown parser (metadata, sections, cross-refs)
+│   ├── types.ts              # Shared TypeScript types
+│   └── tools/
+│       ├── memory-search.ts  # FTS5 full-text search
+│       ├── memory-query.ts   # Structured queries
+│       ├── memory-recall.ts  # Token-budgeted retrieval
+│       ├── memory-link.ts    # Create relationships
+│       ├── memory-graph.ts   # Graph traversal
+│       └── memory-schema.ts  # Schema discovery
+└── build/                    # Compiled JavaScript (git-ignored)
+```
 
-If the MCP server is not running or not configured:
-- All Layer 0-4 functionality continues to work unchanged
-- The agent falls back to file-based read/write for all memory operations
-- No error messages — the MCP tools are simply not available
+## Installation
 
-## Configuration (planned)
+### Build the server
+
+```bash
+cd mcp
+npm install
+npx tsc
+```
+
+### Configure in your project
+
+Add to `.vscode/mcp.json` in any project that has a `memory-bank/` directory:
 
 ```json
-// .vscode/mcp.json
 {
   "servers": {
     "memory-bank": {
-      "command": "npx",
-      "args": ["vscode-memory-bank-mcp"],
+      "command": "node",
+      "args": ["/path/to/vscode-memory-bank/mcp/build/index.js"],
       "env": {
         "MEMORY_BANK_PATH": "${workspaceFolder}/memory-bank"
       }
@@ -88,7 +112,24 @@ If the MCP server is not running or not configured:
 }
 ```
 
+## Key Design Decisions
+
+- **TypeScript** — aligns with VS Code / Claude Agent SDK ecosystem
+- **SQLite + FTS5** — zero external dependencies, single-file database per workspace
+- **Stdio transport** — simplest integration, no HTTP server to manage
+- **Markdown sync** — MCP server reads the same markdown files from Layers 0-4, keeping them as source of truth
+- **WAL mode** — better concurrent read performance
+- **Auto cross-references** — scans content for ADR-NNNN / TASK-NNN patterns and creates links automatically
+
+## Graceful Degradation
+
+If the MCP server is not running or not configured:
+- All Layer 0-4 functionality continues to work unchanged
+- The agent falls back to file-based read/write for all memory operations
+- No error messages — the MCP tools are simply not available
+
 ## Compatibility
 - Target platform: VS Code + GitHub Copilot extension + Claude Agent SDK
 - Model: Claude Opus (latest) — see `memory-bank-config.json`
 - Server runs as a child process via stdio — no network ports, no Docker
+- Dependencies: `@modelcontextprotocol/sdk`, `better-sqlite3`, `zod`
