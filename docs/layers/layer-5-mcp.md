@@ -90,5 +90,5 @@ If the MCP server is not running or not configured:
 
 ## Compatibility
 - Target platform: VS Code + GitHub Copilot extension + Claude Agent SDK
-- Model: Claude Opus 4
+- Model: Claude Opus (latest) — see `memory-bank-config.json`
 - Server runs as a child process via stdio — no network ports, no Docker

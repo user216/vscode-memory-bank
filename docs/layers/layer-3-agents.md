@@ -23,7 +23,11 @@ This implements the **Plan/Act mode** pattern from the original memory-bank inst
 
 ## Model
 
-Both agents use **Claude Opus 4** (latest). Quality is prioritized over speed — the same model handles both planning and execution. Model switching is only warranted when there's a concrete productivity reason (e.g., a task that genuinely benefits from different model characteristics), not for cost savings.
+Agents do **not** pin a model version in their frontmatter. They inherit whatever model you have configured as your default in VS Code Copilot settings. This means:
+- When a new Claude model releases, you update your VS Code settings — agents automatically use it
+- No files to edit, no scripts to run
+- The recommended model is documented in `memory-bank-config.json` (currently: Claude Opus latest)
+- If you need to pin a specific version for testing, use `./scripts/update-model.sh "Claude Opus 5"` to add explicit `model:` fields
 
 ## Agents
 
@@ -33,7 +37,7 @@ Both agents use **Claude Opus 4** (latest). Quality is prioritized over speed �
 
 ```yaml
 name: Memory Planner
-model: 'Claude Opus 4'
+# No model field — inherits user's default (recommended: Claude Opus latest)
 # No tools restriction — all tools available, behavior guided by instructions
 ```
 
@@ -64,7 +68,7 @@ model: 'Claude Opus 4'
 
 ```yaml
 name: Memory Worker
-model: 'Claude Opus 4'
+# No model field — inherits user's default
 # Broad tool access — no artificial restrictions
 ```
 
@@ -127,7 +131,7 @@ Agents placed in the user profile folder are available across all workspaces.
 ---
 name: Agent Name                    # Display name in dropdown
 description: What this agent does   # Shown as placeholder text
-model: 'Claude Opus 4'             # Model (quality-first approach)
+# model: omitted — inherits user default. Use update-model.sh to pin if needed
 handoffs:                           # Transition buttons
   - label: Button Text              # Text shown on button
     agent: target-agent             # Agent to hand off to
@@ -136,7 +140,7 @@ handoffs:                           # Transition buttons
 ---
 ```
 
-Note: The `tools` field is omitted intentionally. When omitted, the agent has access to all available tools. Behavioral constraints (e.g., "don't edit code") are enforced via instructions in the agent body, not via tool restrictions. This avoids "tool was called but blocked" errors.
+Note: Both `model` and `tools` fields are omitted intentionally. When omitted, agents inherit the user's default model and have access to all available tools. Behavioral constraints (e.g., "don't edit code") are enforced via instructions in the agent body. This avoids version staleness and "tool was called but blocked" errors.
 
 ## Why Two Agents Instead of One?
 
@@ -157,4 +161,4 @@ Separate agents solve these: there's no mode to forget (each agent has one job),
 ## Compatibility
 - Requires VS Code 1.106+ with GitHub Copilot extension + Claude Agent SDK
 - Handoffs require the `agent` tool to be available
-- Uses Claude Opus 4 — quality-first, no model fallback needed
+- Agents inherit user's default model — no version pinning, no staleness

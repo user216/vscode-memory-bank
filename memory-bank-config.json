@@ -1,0 +1,4 @@
+{
+  "model": "Claude Opus (latest)",
+  "_comment": "Recommended model for this project. Agents do NOT pin a model version — they inherit your VS Code Copilot default. This file documents which model the project is designed and tested for. Update when you upgrade. The update-model.sh script can optionally pin a specific version in agent files if needed."
+}

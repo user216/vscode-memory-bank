@@ -104,6 +104,6 @@ This is the highest-effort, lowest-priority layer. It should only be built after
 
 ## Compatibility
 - Target platform: VS Code + GitHub Copilot extension + Claude Agent SDK
-- Model: Claude Opus 4
+- Model: Claude Opus (latest) — see `memory-bank-config.json`
 - Will include all lower layers bundled
 - Marketplace distribution for one-click installation

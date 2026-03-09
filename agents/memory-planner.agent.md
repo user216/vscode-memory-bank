@@ -1,7 +1,6 @@
 ---
 name: Memory Planner
 description: Plan mode agent that reads Memory Bank context and develops implementation strategy without making code changes.
-model: 'Claude Opus 4'
 handoffs:
   - label: Execute Plan
     agent: memory-worker
