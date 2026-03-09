@@ -52,6 +52,9 @@ export function registerMemorySchema(server: McpServer): void {
           memory_link: "Create typed relationships between items",
           memory_graph: "Traverse knowledge graph from a starting item",
           memory_schema: "This tool — describes the data model",
+          memory_create_task: "Create a new task with auto-generated ID, proper formatting, and index update",
+          memory_update_status: "Update task/decision status with validation and optional log entry",
+          memory_save_context: "Save activeContext.md with structured sections (focus, changes, decisions, next steps)",
         },
       };
 
