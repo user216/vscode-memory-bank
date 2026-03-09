@@ -11,6 +11,9 @@ import { registerMemoryRecall } from "./tools/memory-recall.js";
 import { registerMemoryLink } from "./tools/memory-link.js";
 import { registerMemoryGraph } from "./tools/memory-graph.js";
 import { registerMemorySchema } from "./tools/memory-schema.js";
+import { registerMemoryCreateTask } from "./tools/memory-create-task.js";
+import { registerMemoryUpdateStatus } from "./tools/memory-update-status.js";
+import { registerMemorySaveContext } from "./tools/memory-save-context.js";
 
 const MEMORY_BANK_PATH = process.env.MEMORY_BANK_PATH || path.join(process.cwd(), "memory-bank");
 
@@ -41,6 +44,9 @@ async function main(): Promise<void> {
   registerMemoryLink(server);
   registerMemoryGraph(server);
   registerMemorySchema(server);
+  registerMemoryCreateTask(server);
+  registerMemoryUpdateStatus(server);
+  registerMemorySaveContext(server);
 
   // Connect via stdio transport
   const transport = new StdioServerTransport();
