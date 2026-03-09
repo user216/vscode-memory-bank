@@ -1,0 +1,22 @@
+{
+  "name": "vscode-memory-bank",
+  "metadata": {
+    "description": "Persistent AI project memory across sessions — 7-layer toolkit with skills, agents, prompts, hooks, and MCP server",
+    "version": "0.2.0"
+  },
+  "owner": {
+    "name": "user216",
+    "email": ""
+  },
+  "plugins": [
+    {
+      "name": "memory-bank",
+      "source": ".",
+      "description": "Maintain AI project memory across coding sessions with structured markdown documentation, task management, and knowledge graph.",
+      "version": "0.2.0",
+      "skills": [
+        "./skills/managing-memory-bank"
+      ]
+    }
+  ]
+}
