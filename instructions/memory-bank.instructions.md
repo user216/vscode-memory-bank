@@ -104,9 +104,30 @@ flowchart TD
     Complete --> UpdateIndex2[Update Index]
 ```
 
-## Documentation Updates
+## Automatic Memory Bank Updates
 
-Updates happen when:
+**These are mandatory — do not wait for the user to ask.**
+
+### When to Create ADRs Automatically
+Create an ADR via `memory_create_task` or direct file creation whenever:
+- A significant architectural or design decision is made or changed
+- A critical misunderstanding is corrected (e.g., platform identity, config locations)
+- A technology, pattern, or approach is chosen over alternatives
+- A previous decision is reversed or superseded
+
+### When to Create/Update Tasks Automatically
+- **Create a task** when starting a non-trivial block of work (multi-step, multi-file)
+- **Update task status** via `memory_update_status` when work is completed, abandoned, or blocked
+- **Update task subtasks** when scope changes during implementation
+- **Update `_index.md`** whenever tasks or decisions are created or change status
+
+### When to Update Context Automatically
+- **Update `activeContext.md`** via `memory_save_context` at the end of each significant work block
+- **Update `progress.md`** when features are completed or issues are discovered
+
+### General Documentation Updates
+
+Updates also happen when:
 - Discovering new project patterns
 - After significant implementation changes
 - When user explicitly requests "update memory bank"
