@@ -1,5 +1,11 @@
 # Changelog — VS Code Extension
 
+## 0.2.1
+
+### Fixed
+- **MCP status bar button**: Removed broken server toggle that spawned a ghost process no client connected to. The Claude Agent SDK manages the MCP server lifecycle via `.mcp.json` — the extension no longer interferes.
+- **Status bar now informational**: Shows whether `.mcp.json` is configured. Click opens the config file for inspection or offers to create one.
+
 ## 0.2.0
 
 ### Added
