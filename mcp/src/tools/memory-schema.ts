@@ -38,7 +38,7 @@ export function registerMemorySchema(server: McpServer): void {
         itemTypes: {
           core: "Narrative context files (projectbrief, productContext, systemPatterns, techContext, activeContext, progress)",
           task: "Task files with status lifecycle: Pending → In Progress → Completed / Abandoned",
-          decision: "ADR files with status lifecycle: Proposed → Accepted → Deprecated / Superseded",
+          decision: "ADR files with status lifecycle: Proposed → Accepted → Deprecated / Superseded / Rejected",
         },
         currentCounts: Object.fromEntries(typeCounts.map((r) => [r.type, r.cnt])),
         statusValues: statuses.map((r) => r.status),

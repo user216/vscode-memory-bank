@@ -66,7 +66,7 @@ function updateDecisionIndex(decisionsDir: string): void {
   }
 
   let md = "# Decisions Index\n\n";
-  for (const status of ["Proposed", "Accepted", "Deprecated", "Superseded"]) {
+  for (const status of ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"]) {
     md += `## ${status}\n\n`;
     const group = groups[status];
     if (!group || group.length === 0) {
@@ -91,7 +91,7 @@ export function registerMemoryCreateDecision(server: McpServer): void {
       context: z.string().describe("Context section — the problem, situation, or forces prompting this decision. Can be multi-line."),
       decision: z.string().describe("Decision section — what was decided and why. Can be multi-line."),
       status: z
-        .enum(["Proposed", "Accepted", "Deprecated", "Superseded"])
+        .enum(["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"])
         .optional()
         .default("Proposed")
         .describe("Initial status (default: 'Proposed'). Use 'Accepted' if decision is already final."),

@@ -65,7 +65,7 @@ function updateDecisionIndex(decisionsDir: string): void {
   }
 
   let md = "# Decisions Index\n\n";
-  for (const status of ["Proposed", "Accepted", "Deprecated", "Superseded"]) {
+  for (const status of ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"]) {
     md += `## ${status}\n\n`;
     const group = groups[status];
     if (!group || group.length === 0) {
@@ -158,7 +158,6 @@ function normalizeStatus(raw: string): string {
     if (s.toLowerCase().replace(/[^a-z]/g, "") === lower) return s;
   }
   // Map common aliases
-  if (lower === "rejected") return "Deprecated";
   if (lower === "draft") return "Proposed";
   if (lower === "approved") return "Accepted";
   return raw; // preserve as-is if unknown
@@ -256,7 +255,7 @@ export function registerMemoryImportDecisions(server: McpServer): void {
         const rawContent = fs.readFileSync(sourceFile, "utf-8");
         const { frontMatter, body } = parseFrontMatter(rawContent);
         const title = extractTitle(body, path.basename(sourceFile), frontMatter);
-        const parsedStatus = extractStatus(frontMatter, body) || "Proposed";
+        const parsedStatus = extractStatus(frontMatter, body) || "Accepted";
 
         // Preserve original ADR number from filename if possible
         const originalNum = extractAdrNumber(path.basename(sourceFile));

@@ -6,7 +6,7 @@ import { getDb } from "../db.js";
 import { syncSingleFile } from "../sync.js";
 
 const TASK_STATUSES = ["Pending", "In Progress", "Completed", "Abandoned"] as const;
-const DECISION_STATUSES = ["Proposed", "Accepted", "Deprecated", "Superseded"] as const;
+const DECISION_STATUSES = ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"] as const;
 const ALL_STATUSES = [...TASK_STATUSES, ...DECISION_STATUSES];
 
 function getMemoryBankPath(): string {
@@ -42,7 +42,7 @@ function updateIndex(dir: string, type: "tasks" | "decisions"): void {
   const statusOrder =
     type === "tasks"
       ? ["In Progress", "Pending", "Completed", "Abandoned"]
-      : ["Proposed", "Accepted", "Deprecated", "Superseded"];
+      : ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"];
 
   const groups: Record<string, typeof items> = {};
   for (const item of items) {
@@ -78,7 +78,7 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
       status: z
         .string()
         .describe(
-          "New status (case-sensitive). Tasks: 'Pending', 'In Progress', 'Completed', 'Abandoned'. Decisions: 'Proposed', 'Accepted', 'Deprecated', 'Superseded'.",
+          "New status (case-sensitive). Tasks: 'Pending', 'In Progress', 'Completed', 'Abandoned'. Decisions: 'Proposed', 'Accepted', 'Deprecated', 'Superseded', 'Rejected'.",
         ),
       log_entry: z
         .string()

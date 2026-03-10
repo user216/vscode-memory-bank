@@ -41,7 +41,7 @@ function updateDecisionIndex(decisionsDir: string): void {
   }
 
   let md = "# Decisions Index\n\n";
-  for (const status of ["Proposed", "Accepted", "Deprecated", "Superseded"]) {
+  for (const status of ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"]) {
     md += `## ${status}\n\n`;
     const group = groups[status];
     if (!group || group.length === 0) {

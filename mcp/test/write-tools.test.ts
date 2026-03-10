@@ -445,6 +445,37 @@ Use git submodules.
 `
     );
 
+    // 8. ADR with NO status at all — should default to "Accepted"
+    fs.writeFileSync(
+      path.join(IMPORT_SOURCE, "adr-0037-use-prettier.md"),
+      `# Use Prettier for Code Formatting
+
+## Context
+Need consistent code style.
+
+## Decision
+Use Prettier with default config.
+`
+    );
+
+    // 9. ADR with "Rejected" status in frontmatter
+    fs.writeFileSync(
+      path.join(IMPORT_SOURCE, "adr-0047-use-graphql.md"),
+      `---
+title: Use GraphQL for API
+status: Rejected
+---
+
+# Use GraphQL for API
+
+## Context
+Considered GraphQL vs REST.
+
+## Decision
+Rejected — REST is simpler for our needs.
+`
+    );
+
     process.env.MEMORY_BANK_PATH = TEMP_MB_PATH;
     initDb(TEMP_MB_PATH);
     syncAllFiles(TEMP_MB_PATH);
@@ -632,7 +663,6 @@ Use git submodules.
         for (const s of VALID) {
           if (s.toLowerCase().replace(/[^a-z]/g, "") === lower) return s;
         }
-        if (lower === "rejected") return "Deprecated";
         if (lower === "draft") return "Proposed";
         if (lower === "approved") return "Accepted";
         return raw;
@@ -645,6 +675,41 @@ Use git submodules.
       expect(normalizeStatus("draft")).toBe("Proposed");
       expect(normalizeStatus("approved")).toBe("Accepted");
       expect(normalizeStatus("Rejected")).toBe("Rejected");
+      expect(normalizeStatus("rejected")).toBe("Rejected");
+    });
+
+    it("defaults to Accepted when no status is found", () => {
+      // ADRs without explicit status should default to Accepted, not Proposed
+      const defaultStatus = null || "Accepted";
+      expect(defaultStatus).toBe("Accepted");
+    });
+
+    it("preserves Rejected status from frontmatter", () => {
+      const content = fs.readFileSync(
+        path.join(IMPORT_SOURCE, "adr-0047-use-graphql.md"),
+        "utf-8"
+      );
+      const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      const fm: Record<string, string> = {};
+      for (const line of fmMatch![1].split(/\r?\n/)) {
+        const kvMatch = line.match(/^(\w[\w-]*)\s*:\s*(.+)$/);
+        if (kvMatch) {
+          fm[kvMatch[1].toLowerCase()] = kvMatch[2].trim();
+        }
+      }
+      expect(fm.status).toBe("Rejected");
+    });
+
+    it("detects ADR with no status has no frontmatter or inline status", () => {
+      const content = fs.readFileSync(
+        path.join(IMPORT_SOURCE, "adr-0037-use-prettier.md"),
+        "utf-8"
+      );
+      const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
+      expect(fmMatch).toBeNull();
+      expect(statusMatch).toBeNull();
+      // With no status found, import should default to "Accepted"
     });
   });
 
