@@ -68,22 +68,22 @@ function updateIndex(dir: string, type: "tasks" | "decisions"): void {
 export function registerMemoryUpdateStatus(server: McpServer): void {
   server.tool(
     "memory_update_status",
-    "Update the status of a task or decision in the memory bank. Validates status values and updates the index.",
+    "Update the status of a task or decision in the memory bank. Validates status values against item type, updates the markdown file, regenerates the index, and syncs to SQLite. Optionally appends a timestamped progress log entry.",
     {
       id: z
         .string()
         .describe(
-          "Item ID (e.g. 'TASK-001', 'ADR-0001')",
+          "Item ID to update (e.g. 'TASK-001', 'ADR-0001'). Must exist — use memory_query to find IDs.",
         ),
       status: z
         .string()
         .describe(
-          "New status. Tasks: Pending, In Progress, Completed, Abandoned. Decisions: Proposed, Accepted, Deprecated, Superseded.",
+          "New status (case-sensitive). Tasks: 'Pending', 'In Progress', 'Completed', 'Abandoned'. Decisions: 'Proposed', 'Accepted', 'Deprecated', 'Superseded'.",
         ),
       log_entry: z
         .string()
         .optional()
-        .describe("Optional progress log entry to append"),
+        .describe("Progress log entry to append with today's date (optional). E.g. 'Completed migration, all tests passing.'"),
     },
     async ({ id, status, log_entry }) => {
       const mbPath = getMemoryBankPath();

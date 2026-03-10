@@ -15,6 +15,7 @@ import { registerMemoryCreateTask } from "./tools/memory-create-task.js";
 import { registerMemoryCreateDecision } from "./tools/memory-create-decision.js";
 import { registerMemoryImportDecisions } from "./tools/memory-import-decisions.js";
 import { registerMemoryUpdateStatus } from "./tools/memory-update-status.js";
+import { registerMemoryUpdateDecision } from "./tools/memory-update-decision.js";
 import { registerMemorySaveContext } from "./tools/memory-save-context.js";
 
 const MEMORY_BANK_PATH = process.env.MEMORY_BANK_PATH || path.join(process.cwd(), "memory-bank");
@@ -50,6 +51,7 @@ async function main(): Promise<void> {
   registerMemoryCreateDecision(server);
   registerMemoryImportDecisions(server);
   registerMemoryUpdateStatus(server);
+  registerMemoryUpdateDecision(server);
   registerMemorySaveContext(server);
 
   // Connect via stdio transport

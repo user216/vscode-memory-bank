@@ -14,7 +14,7 @@ interface RelationRow {
 export function registerMemorySchema(server: McpServer): void {
   server.tool(
     "memory_schema",
-    "Returns the memory bank data model: item types, status values, link relation types, and available tools. Use for discovering what queries are possible.",
+    "Returns the memory bank data model: item types, status values, link relation types, and available tools. Call this first to discover what queries are possible and understand the data structure. No parameters required.",
     {},
     async () => {
       const db = getDb();
@@ -56,6 +56,7 @@ export function registerMemorySchema(server: McpServer): void {
           memory_create_decision: "Create a new ADR decision with auto-generated ID, proper formatting, and index update",
           memory_import_decisions: "Import ADR files from an external directory or re-sync existing decisions to SQLite",
           memory_update_status: "Update task/decision status with validation and optional log entry",
+          memory_update_decision: "Update content of an existing ADR (title, context, decision, alternatives, consequences)",
           memory_save_context: "Save activeContext.md with structured sections (focus, changes, decisions, next steps)",
         },
       };

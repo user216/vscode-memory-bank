@@ -14,22 +14,22 @@ function getMemoryBankPath(): string {
 export function registerMemorySaveContext(server: McpServer): void {
   server.tool(
     "memory_save_context",
-    "Save the current active context to activeContext.md with proper structure. Overwrites the file with validated sections.",
+    "Save the current active context to activeContext.md with proper structure. Overwrites the file with validated sections and syncs to SQLite. Call at end of session or when focus shifts to preserve working state.",
     {
       current_focus: z
         .string()
-        .describe("One-line summary of what the project is currently focused on"),
+        .describe("One-line summary of what the project is currently focused on (e.g. 'Implementing OAuth2 login flow')"),
       recent_changes: z
         .array(z.string())
-        .describe("List of recent changes (each item is a bullet point)"),
+        .describe("List of recent changes (each item becomes a bullet point). E.g. ['Added user login endpoint', 'Fixed session timeout bug']"),
       current_decisions: z
         .array(z.string())
         .optional()
-        .describe("List of current active decisions (optional, preserved if omitted)"),
+        .describe("List of current active decisions (optional). If omitted, existing decisions are preserved from the current file."),
       next_steps: z
         .array(z.string())
         .optional()
-        .describe("List of next steps (optional)"),
+        .describe("List of next steps, rendered as numbered list (optional). E.g. ['Add password reset flow', 'Write integration tests']"),
     },
     async ({ current_focus, recent_changes, current_decisions, next_steps }) => {
       const mbPath = getMemoryBankPath();

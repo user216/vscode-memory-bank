@@ -6,12 +6,12 @@ import type { QueryResult } from "../types.js";
 export function registerMemoryQuery(server: McpServer): void {
   server.tool(
     "memory_query",
-    "Structured query of memory bank items by type, status, or date range. Returns matching items with metadata.",
+    "Structured query of memory bank items by type, status, or date range. Returns matching items with metadata. All filters combine with AND logic. Call with no parameters to list all items. For keyword search, use memory_search instead.",
     {
-      type: z.enum(["core", "task", "decision"]).optional().describe("Filter by item type"),
-      status: z.string().optional().describe("Filter by status (e.g. 'Completed', 'Accepted', 'In Progress')"),
-      since: z.string().optional().describe("Items updated on or after this date (ISO format: YYYY-MM-DD)"),
-      until: z.string().optional().describe("Items updated on or before this date (ISO format: YYYY-MM-DD)"),
+      type: z.enum(["core", "task", "decision"]).optional().describe("Filter by item type: 'core' (context files), 'task' (TASK-NNN), 'decision' (ADR-NNNN)"),
+      status: z.string().optional().describe("Filter by status (case-sensitive, exact match). Tasks: 'Pending', 'In Progress', 'Completed', 'Abandoned'. Decisions: 'Proposed', 'Accepted', 'Deprecated', 'Superseded'."),
+      since: z.string().optional().describe("Items updated on or after this date (ISO format: YYYY-MM-DD, e.g. '2026-01-15')"),
+      until: z.string().optional().describe("Items updated on or before this date (ISO format: YYYY-MM-DD, e.g. '2026-03-01')"),
       limit: z.number().min(1).max(100).optional().describe("Maximum results (default 20)"),
     },
     async ({ type, status, since, until, limit }) => {

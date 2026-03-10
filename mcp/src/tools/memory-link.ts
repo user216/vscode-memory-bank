@@ -5,11 +5,11 @@ import { getDb } from "../db.js";
 export function registerMemoryLink(server: McpServer): void {
   server.tool(
     "memory_link",
-    "Create a typed relationship between two memory bank items. Use for connecting decisions to tasks, tasks to patterns, etc.",
+    "Create a typed, directional relationship between two memory bank items. Links are directional: source —[relation]→ target (e.g. TASK-001 —[implements]→ ADR-0001 means the task implements the decision). Use memory_graph to visualize connections after creating links.",
     {
-      source: z.string().describe("Source item ID (e.g. 'TASK-001', 'ADR-0001', 'projectbrief')"),
-      target: z.string().describe("Target item ID"),
-      relation: z.string().describe("Relationship type (e.g. 'implements', 'supersedes', 'blocks', 'depends-on', 'references')"),
+      source: z.string().describe("Source item ID — the item that performs the action (e.g. 'TASK-001', 'ADR-0002'). Read as: source [relation] target."),
+      target: z.string().describe("Target item ID — the item being acted upon (e.g. 'ADR-0001', 'projectbrief'). Both source and target must exist — use memory_query to list available IDs."),
+      relation: z.string().describe("Relationship type describing how source relates to target. Common: 'implements' (task→decision), 'supersedes' (new→old), 'blocks', 'depends-on', 'references'. Free-form string."),
     },
     async ({ source, target, relation }) => {
       const db = getDb();

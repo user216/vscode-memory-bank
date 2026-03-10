@@ -85,18 +85,18 @@ function updateTaskIndex(tasksDir: string): void {
 export function registerMemoryCreateTask(server: McpServer): void {
   server.tool(
     "memory_create_task",
-    "Create a new task in the memory bank with proper formatting, auto-generated ID, and index update.",
+    "Create a new task in the memory bank with proper formatting, auto-generated TASK-NNN ID, and index update. Creates a markdown file in memory-bank/tasks/ and syncs to SQLite. Initial status is always Pending — use memory_update_status to change it later.",
     {
-      title: z.string().describe("Task title (e.g. 'Implement user authentication')"),
-      request: z.string().describe("Original request or description of what needs to be done"),
+      title: z.string().describe("Task title — short, descriptive (e.g. 'Implement user authentication', 'Fix login redirect bug')"),
+      request: z.string().describe("Original request or description of what needs to be done. Can be multi-line."),
       plan: z
         .array(z.string())
         .optional()
-        .describe("Implementation plan steps (optional)"),
+        .describe("Implementation plan steps, rendered as numbered list (optional). E.g. ['Set up auth middleware', 'Add login endpoint', 'Write tests']"),
       subtasks: z
         .array(z.string())
         .optional()
-        .describe("Subtask descriptions for progress tracking (optional)"),
+        .describe("Subtask descriptions for progress tracking table (optional). E.g. ['Backend API', 'Frontend form', 'Integration tests']"),
     },
     async ({ title, request, plan, subtasks }) => {
       const mbPath = getMemoryBankPath();

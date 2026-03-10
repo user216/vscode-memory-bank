@@ -18,11 +18,11 @@ interface LinkRow {
 export function registerMemoryGraph(server: McpServer): void {
   server.tool(
     "memory_graph",
-    "Traverse the knowledge graph from a starting item. Shows connected items and their relationships up to a specified depth.",
+    "Traverse the knowledge graph from a starting item. Shows connected items and their relationships up to a specified depth. Use after memory_link to visualize connections. Output shows nodes and directed edges (source —[relation]→ target).",
     {
-      item: z.string().describe("Starting item ID (e.g. 'TASK-001', 'ADR-0001', 'activeContext')"),
-      depth: z.number().min(1).max(5).optional().describe("Traversal depth (default 1, max 5)"),
-      direction: z.enum(["outgoing", "incoming", "both"]).optional().describe("Traversal direction (default 'both')"),
+      item: z.string().describe("Starting item ID (e.g. 'TASK-001', 'ADR-0001', 'activeContext', 'projectbrief'). Must be an existing item — use memory_query to list available IDs."),
+      depth: z.number().min(1).max(5).optional().describe("Traversal depth (default 1, max 5). Depth 1 = direct connections only, depth 2 = connections of connections, etc."),
+      direction: z.enum(["outgoing", "incoming", "both"]).optional().describe("Traversal direction (default 'both'). 'outgoing' = items this links TO (source→target), 'incoming' = items linking TO this (target←source), 'both' = all connections."),
     },
     async ({ item, depth, direction }) => {
       const db = getDb();

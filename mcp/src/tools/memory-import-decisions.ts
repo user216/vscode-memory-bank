@@ -81,17 +81,87 @@ function updateDecisionIndex(decisionsDir: string): void {
   fs.writeFileSync(indexPath, md);
 }
 
-function extractTitle(content: string, filename: string): string {
+interface FrontMatter {
+  title?: string;
+  status?: string;
+  [key: string]: string | undefined;
+}
+
+function parseFrontMatter(content: string): { frontMatter: FrontMatter; body: string } {
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+  if (!fmMatch) {
+    return { frontMatter: {}, body: content };
+  }
+
+  const fm: FrontMatter = {};
+  for (const line of fmMatch[1].split(/\r?\n/)) {
+    const kvMatch = line.match(/^(\w[\w-]*)\s*:\s*(.+)$/);
+    if (kvMatch) {
+      fm[kvMatch[1].toLowerCase()] = kvMatch[2].trim().replace(/^["']|["']$/g, "");
+    }
+  }
+  return { frontMatter: fm, body: fmMatch[2] };
+}
+
+function isAdrFile(filename: string): boolean {
+  const lower = filename.toLowerCase();
+  // Match adr-NNN, adr_NNN, NNN-, or any file with "adr" in the name
+  return /^adr[-_]?\d+/i.test(lower) || /^\d{4}-/.test(lower);
+}
+
+function extractAdrNumber(filename: string): number | null {
+  // Try adr-NNNN, adr-NNN, adr_NNNN patterns
+  const adrMatch = filename.match(/^adr[-_]?(\d+)/i);
+  if (adrMatch) return parseInt(adrMatch[1], 10);
+  // Try NNNN- prefix pattern
+  const numMatch = filename.match(/^(\d{4})-/);
+  if (numMatch) return parseInt(numMatch[1], 10);
+  return null;
+}
+
+function extractTitle(content: string, filename: string, frontMatter: FrontMatter): string {
+  // 1. Try YAML frontmatter title
+  if (frontMatter.title) {
+    return frontMatter.title.replace(/^ADR[-_]?\d+:\s*/i, "").trim();
+  }
+  // 2. Try markdown heading (skip ADR-NNNN: prefix)
   const titleMatch = content.match(/^#\s+(.+)$/m);
   if (titleMatch) {
-    // Strip ADR-NNNN: prefix if present
-    return titleMatch[1].replace(/^ADR-\d{4}:\s*/, "").trim();
+    return titleMatch[1].replace(/^ADR[-_]?\d+:\s*/i, "").trim();
   }
-  // Fallback: derive from filename
+  // 3. Fallback: derive from filename
   return path.basename(filename, ".md")
-    .replace(/^[\d-]+/, "")
+    .replace(/^adr[-_]?\d+[-_]*/i, "")
+    .replace(/^\d{4}-/, "")
     .replace(/[-_]/g, " ")
     .trim() || filename;
+}
+
+function extractStatus(frontMatter: FrontMatter, body: string): string | null {
+  // 1. Try YAML frontmatter status
+  if (frontMatter.status) {
+    return normalizeStatus(frontMatter.status);
+  }
+  // 2. Try **Status:** inline
+  const statusMatch = body.match(/\*\*Status:\*\*\s*(.+)/);
+  if (statusMatch) {
+    return normalizeStatus(statusMatch[1].trim());
+  }
+  return null;
+}
+
+const VALID_DECISION_STATUSES = ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"];
+
+function normalizeStatus(raw: string): string {
+  const lower = raw.toLowerCase().replace(/[^a-z]/g, "");
+  for (const s of VALID_DECISION_STATUSES) {
+    if (s.toLowerCase().replace(/[^a-z]/g, "") === lower) return s;
+  }
+  // Map common aliases
+  if (lower === "rejected") return "Deprecated";
+  if (lower === "draft") return "Proposed";
+  if (lower === "approved") return "Accepted";
+  return raw; // preserve as-is if unknown
 }
 
 function collectMarkdownFiles(dir: string): string[] {
@@ -99,7 +169,7 @@ function collectMarkdownFiles(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
-    if (entry.isFile() && entry.name.endsWith(".md") && !entry.name.startsWith("_")) {
+    if (entry.isFile() && entry.name.endsWith(".md") && !entry.name.startsWith("_") && isAdrFile(entry.name)) {
       files.push(fullPath);
     }
   }
@@ -109,17 +179,17 @@ function collectMarkdownFiles(dir: string): string[] {
 export function registerMemoryImportDecisions(server: McpServer): void {
   server.tool(
     "memory_import_decisions",
-    "Import ADR/decision markdown files into the memory bank. Can import from an external directory (assigns new ADR IDs) or re-sync existing decisions from memory-bank/decisions/ to SQLite.",
+    "Import ADR/decision markdown files into the memory bank. Can import from an external directory (assigns new ADR IDs, preserving original numbering when possible) or re-sync existing decisions from memory-bank/decisions/ to SQLite. Only imports files matching ADR naming patterns (adr-NNN*.md, NNNN-*.md); skips README.md and other non-ADR files. Parses YAML frontmatter for title and status fields.",
     {
       source_directory: z
         .string()
         .optional()
-        .describe("Directory to import .md files from. If omitted, re-syncs existing decisions in memory-bank/decisions/"),
+        .describe("Directory to import .md files from (e.g. '/path/to/docs/decisions'). Only ADR-named files are imported (adr-*.md, NNNN-*.md); README.md and non-ADR files are skipped. If omitted, re-syncs existing decisions in memory-bank/decisions/ to SQLite."),
       preserve_content: z
         .boolean()
         .optional()
         .default(true)
-        .describe("If true, keeps original file content as-is (only prepends ADR header if missing). If false, restructures into standard ADR template."),
+        .describe("If true (default), keeps original file content as-is (only prepends ADR header if missing). If false, restructures into standard ADR template with Context/Decision/Alternatives/Consequences sections."),
     },
     async ({ source_directory, preserve_content }) => {
       const mbPath = getMemoryBankPath();
@@ -183,22 +253,26 @@ export function registerMemoryImportDecisions(server: McpServer): void {
       }
 
       for (const sourceFile of sourceFiles) {
-        const content = fs.readFileSync(sourceFile, "utf-8");
-        const title = extractTitle(content, path.basename(sourceFile));
+        const rawContent = fs.readFileSync(sourceFile, "utf-8");
+        const { frontMatter, body } = parseFrontMatter(rawContent);
+        const title = extractTitle(body, path.basename(sourceFile), frontMatter);
+        const parsedStatus = extractStatus(frontMatter, body) || "Proposed";
 
-        // Check if this file already has an ADR-NNNN ID
-        const existingIdMatch = path.basename(sourceFile).match(/^(ADR-\d{4})/);
+        // Preserve original ADR number from filename if possible
+        const originalNum = extractAdrNumber(path.basename(sourceFile));
 
         let adrId: string;
         let fileName: string;
 
-        if (existingIdMatch) {
-          // File already has an ADR ID — check if it conflicts with existing
-          adrId = existingIdMatch[1];
-          const existingFile = fs.readdirSync(decisionsDir).find((f) => f.startsWith(adrId));
+        if (originalNum !== null) {
+          const candidateId = `ADR-${String(originalNum).padStart(4, "0")}`;
+          // Check for ID conflict with existing files
+          const existingFile = fs.readdirSync(decisionsDir).find((f) => f.startsWith(candidateId));
           if (existingFile) {
             // ID conflict — assign a new one
             adrId = getNextAdrId(decisionsDir);
+          } else {
+            adrId = candidateId;
           }
           fileName = `${adrId}-${slugify(title)}.md`;
         } else {
@@ -213,27 +287,31 @@ export function registerMemoryImportDecisions(server: McpServer): void {
 
         if (preserve_content) {
           // Check if file already has proper ADR header
-          const hasHeader = /^#\s+ADR-\d{4}:/.test(content);
-          const hasStatus = /\*\*Status:\*\*/.test(content);
+          const hasHeader = /^#\s+ADR-\d{4}:/.test(body);
+          const hasStatus = /\*\*Status:\*\*/.test(body);
 
           if (hasHeader && hasStatus) {
-            // Already formatted — just update the ID in the header
-            outputContent = content.replace(/^#\s+ADR-\d{4}:/, `# ${adrId}:`);
+            // Already formatted — update the ID in the header and status
+            outputContent = body.replace(/^#\s+ADR-\d{4}:/, `# ${adrId}:`);
+            outputContent = outputContent.replace(
+              /(\*\*Status:\*\*\s*).+/,
+              `$1${parsedStatus}`,
+            );
           } else if (hasStatus) {
             // Has status but no ADR header — prepend ID to title
-            outputContent = content.replace(/^#\s+(.+)$/m, `# ${adrId}: $1`);
+            outputContent = body.replace(/^#\s+(.+)$/m, `# ${adrId}: $1`);
           } else {
             // No ADR formatting — prepend metadata header
-            outputContent = `# ${adrId}: ${title}\n\n**Status:** Proposed\n**Date:** ${today}\n**Deciders:**\n\n${content}`;
+            outputContent = `# ${adrId}: ${title}\n\n**Status:** ${parsedStatus}\n**Date:** ${today}\n**Deciders:**\n\n${body}`;
           }
         } else {
           // Restructure into standard ADR template
           outputContent = `# ${adrId}: ${title}\n\n`;
-          outputContent += `**Status:** Proposed\n`;
+          outputContent += `**Status:** ${parsedStatus}\n`;
           outputContent += `**Date:** ${today}\n`;
           outputContent += `**Deciders:**\n\n`;
           outputContent += `## Context\n_Imported from ${path.basename(sourceFile)}_\n\n`;
-          outputContent += `## Decision\n${content}\n\n`;
+          outputContent += `## Decision\n${body}\n\n`;
           outputContent += `## Alternatives Considered\n\n_None documented._\n\n`;
           outputContent += `## Consequences\n_To be determined._\n`;
         }

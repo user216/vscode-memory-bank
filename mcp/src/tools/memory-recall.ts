@@ -27,11 +27,11 @@ const FOUNDATIONAL_ORDER = [
 export function registerMemoryRecall(server: McpServer): void {
   server.tool(
     "memory_recall",
-    "Token-budgeted context retrieval. Returns memory bank content prioritized by strategy, fitting within a token budget. Use at session start to load context efficiently.",
+    "Token-budgeted context retrieval — call once at session start to load project context efficiently. Returns memory bank content prioritized by strategy, trimmed to fit within a token budget. Not for searching; use memory_search or memory_query for lookups.",
     {
-      budget: z.number().min(500).max(100000).optional().describe("Token budget (default 8000). Content is trimmed to fit."),
+      budget: z.number().min(500).max(100000).optional().describe("Token budget (default 8000). ~4000 for quick orientation, ~8000 for working context, ~16000+ for deep review. Content is truncated to fit."),
       priority: z.enum(["foundational", "recent", "active"]).optional().describe(
-        "Priority strategy: 'foundational' (project overview first), 'recent' (most recently updated first), 'active' (current context + in-progress tasks first). Default: 'active'",
+        "Priority strategy (default 'active'): 'foundational' = project overview first (projectbrief → productContext → systemPatterns → techContext → activeContext → progress), 'recent' = most recently updated items first, 'active' = current context + in-progress tasks + proposed decisions first",
       ),
     },
     async ({ budget, priority }) => {

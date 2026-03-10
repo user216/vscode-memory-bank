@@ -85,34 +85,34 @@ function updateDecisionIndex(decisionsDir: string): void {
 export function registerMemoryCreateDecision(server: McpServer): void {
   server.tool(
     "memory_create_decision",
-    "Create a new ADR decision in the memory bank with proper formatting, auto-generated ID, and index update.",
+    "Create a new ADR decision in the memory bank with proper formatting, auto-generated ADR-NNNN ID, and index update. Creates a markdown file in memory-bank/decisions/ and syncs to SQLite. Use memory_update_status to change status later.",
     {
-      title: z.string().describe("Decision title (e.g. 'Use PostgreSQL for persistence')"),
-      context: z.string().describe("Context section — the problem or situation prompting this decision"),
-      decision: z.string().describe("Decision section — what was decided"),
+      title: z.string().describe("Decision title — concise summary (e.g. 'Use PostgreSQL for persistence', 'Adopt React Query for data fetching')"),
+      context: z.string().describe("Context section — the problem, situation, or forces prompting this decision. Can be multi-line."),
+      decision: z.string().describe("Decision section — what was decided and why. Can be multi-line."),
       status: z
         .enum(["Proposed", "Accepted", "Deprecated", "Superseded"])
         .optional()
         .default("Proposed")
-        .describe("Initial status (default: Proposed)"),
+        .describe("Initial status (default: 'Proposed'). Use 'Accepted' if decision is already final."),
       deciders: z
         .string()
         .optional()
         .default("")
-        .describe("Who made or proposed this decision"),
+        .describe("Who made or proposed this decision (e.g. 'Team lead', 'Architecture review board')"),
       alternatives: z
         .array(
           z.object({
-            name: z.string().describe("Alternative name"),
-            description: z.string().describe("Description of the alternative"),
+            name: z.string().describe("Alternative name (e.g. 'MySQL', 'MongoDB')"),
+            description: z.string().describe("Why this alternative was considered and why it was not chosen"),
           })
         )
         .optional()
-        .describe("Alternatives considered (optional)"),
+        .describe("Alternatives considered (optional). Each gets its own subsection in the ADR."),
       consequences: z
         .array(z.string())
         .optional()
-        .describe("List of consequences (optional)"),
+        .describe("List of consequences — both positive and negative (optional). E.g. ['Requires team training on PostgreSQL', 'Better query performance for analytics']"),
     },
     async ({ title, context, decision, status, deciders, alternatives, consequences }) => {
       const mbPath = getMemoryBankPath();
