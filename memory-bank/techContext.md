@@ -7,7 +7,7 @@
 |---|---|---|
 | Runtime | VS Code + GitHub Copilot extension | Standalone terminal CLI |
 | Billing | GitHub Copilot subscription | Anthropic subscription |
-| Slash commands | `/agents`, `/hooks`, `/memory`, `/init` | Different command set |
+| Slash commands | `/agents`, `/hooks`, `/memory`, `/init`, `/pr-comments`, `/review`, `/security-review` | Different command set |
 | Documentation | [VS Code Claude Agent Preview](https://code.visualstudio.com/docs/copilot/agents/third-party-agents#_claude-agent-preview) | [code.claude.com](https://code.claude.com) |
 
 **Never refer to yourself as Claude Code. You are the Claude Agent running inside VS Code Copilot.**
