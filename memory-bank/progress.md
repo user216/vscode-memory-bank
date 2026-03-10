@@ -8,13 +8,14 @@
 - **Layer 2**: Prompt files — `/memory-init`, `/memory-update`, `/memory-review`, `/memory-task`
 - **Layer 3**: Custom agents — Memory Planner (plan mode, read-only tools) + Memory Worker (act mode) with handoffs
 - **Layer 4**: Hooks — SessionStart (inject context), PreCompact (preserve context), Stop (ensure save) — all `jq`-optional
-- **Layer 5**: MCP server (`mcp/`) — TypeScript, SQLite + FTS5, 6 tools (search, query, recall, link, graph, schema), 65 tests all passing
-- **Layer 6**: VS Code extension (`extension/`) — sidebar (Files/Tasks/Decisions tree views), status bar, commands, file watcher, Knowledge Graph webview, MCP server lifecycle manager, builds cleanly
+- **Layer 5**: MCP server (`mcp/`) — TypeScript, SQLite + FTS5, 9 tools (search, query, recall, link, graph, schema, create_task, update_status, save_context), 65 tests all passing
+- **Layer 6**: VS Code extension v0.2.1 (`extension/`) — sidebar (Files/Tasks/Decisions tree views), status bar, commands, file watcher, Knowledge Graph webview, informational MCP status bar (shows .mcp.json config status), builds cleanly
 - **Documentation**: Architecture overview + individual layer docs (all 7 layers documented)
-- **ADRs**: 4 accepted decisions (compatibility, architecture, no-PRD, no-model-pinning)
+- **ADRs**: 6 accepted decisions (compatibility, architecture, no-PRD, no-model-pinning, agent-identity, mcp-config-location)
 - **Model management**: `memory-bank-config.json` + `scripts/update-model.sh` (add/update/remove model pinning)
 - **README.md**: Repository documentation with quick start, architecture overview, install instructions
-- **Plugin compliance**: Copilot plugin manifests (`.github/plugin/`, `.claude-plugin/`), portable MCP config (`.vscode/mcp.json`), community files (`CONTRIBUTING.md`, `SECURITY.md`)
+- **Plugin compliance**: Copilot plugin manifests (`.github/plugin/`, `.claude-plugin/`), MCP config (`.mcp.json` at project root), community files (`CONTRIBUTING.md`, `SECURITY.md`)
+- **Automatic memory bank updates**: Layer 0 instructions now mandate automatic ADR/task/context creation without waiting for user
 - Memory bank self-documenting (this project uses its own memory bank structure)
 
 ## What Remains
@@ -34,6 +35,7 @@
 ## Known Issues
 - MCP server requires `npm install && npx tsc` to build before use
 - Extension requires `npm install && npm run build` before loading in VS Code
+- MCP server must be restarted (VS Code reload) after adding new tools for them to appear
 
 ## Overall Status
 Phase: All 7 layers built and feature-complete, real-world testing remaining

@@ -1,14 +1,11 @@
-# Tasks Index
-
-## In Progress
-_None_
+# Tasks
 
 ## Pending
-- [TASK-003](TASK-003-real-world-testing.md) — Real-world testing across different projects
+
+- **TASK-003**: TASK-003: Real-World Testing Across Projects
 
 ## Completed
-- [TASK-001](TASK-001-initial-scaffolding.md) — Initial project scaffolding and memory bank setup
-- [TASK-002](TASK-002-layer6-extension.md) — Layer 6 extension, MCP write tools, plugin compliance, ADRs
 
-## Abandoned
-_None_
+- **TASK-001**: TASK-001: Initial Project Scaffolding
+- **TASK-002**: TASK-002: Layer 6 — VS Code Extension + MCP Write Tools + Plugin Compliance
+

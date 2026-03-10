@@ -3,7 +3,7 @@
 **Status:** Completed
 **Priority:** High
 **Created:** 2026-03-09
-**Updated:** 2026-03-09
+**Updated:** 2026-03-10
 
 ## Description
 Build the Layer 6 VS Code extension with sidebar tree views, status bar, Knowledge Graph webview, MCP server lifecycle manager. Add MCP write tools. Achieve Copilot plugin compliance. Fix known issues across Layers 0-5.
@@ -33,6 +33,9 @@ Build the Layer 6 VS Code extension with sidebar tree views, status bar, Knowled
 | 20 | Build and verify (65/65 MCP tests, extension compiles) | Done |
 
 ## Progress Log
+
+### 2026-03-10
+Fixed MCP status bar button (v0.2.1) — removed broken server toggle, made informational. Added automatic memory bank update rules to Layer 0 instructions.
 - **2026-03-09**: Created extension scaffold with all core features. Fixed 3 known issues (test isolation, update-model.sh, hook scripts). Refined both agents. Added Knowledge Graph webview with force-directed layout. Added MCP server lifecycle manager. Added 3 MCP write tools. Achieved Copilot plugin compliance with manifests. Documented agent identity (ADR-0005) and MCP config location (ADR-0006). All tests passing, extension v0.2.0 packaged and installed.
 
 ## References
