@@ -1,26 +1,24 @@
 # Active Context
 
 ## Current Focus
-Forked DB Viewer Enhanced extension with FTS5 support, added as git submodule
+Added memory_create_decision and memory_import_decisions MCP tools, forked DB Viewer Enhanced with FTS5
 
 ## Recent Changes
-- Forked stopper2408/db-viewer as user216/db-viewer-enhanced on GitHub
-- Built sql.js WASM with FTS5 enabled using Docker (emscripten/emsdk)
-- Added fork as git submodule at db-viewer/ in vscode-memory-bank
-- Modified esbuild.js to use custom FTS5-enabled sql-wasm.wasm from wasm/ dir
-- Pinned dependency versions to available releases
-- Created scripts/build-wasm-fts5.sh for future WASM rebuilds
-- Packaged and installed extension locally (replaces community-dev.db-viewer-enhanced)
-- Added sqlite.sqlite3 setting to VS Code pointing to /usr/bin/sqlite3 (for alexcvzz extension)
+- Added memory_create_decision MCP tool — creates ADR files with auto-generated IDs
+- Added memory_import_decisions MCP tool — imports external ADRs or re-syncs existing to SQLite
+- Updated memory-schema.ts to list both new tools
+- Registered both tools in index.ts
+- Created ADR-0007 documenting the decision
+- Forked DB Viewer Enhanced with FTS5 WASM support (db-viewer submodule)
+- Fixed WITHOUT ROWID table handling in DB Viewer Enhanced
 
 ## Current Decisions
-- ADR-0005: Agent is Claude Agent Preview in VS Code Copilot, NOT Claude Code CLI
-- ADR-0006: MCP config is at .mcp.json (project root), not .vscode/mcp.json
-- MCP status bar is informational only — SDK manages server lifecycle
-- Memory bank updates (ADRs, tasks, context) are mandatory and automatic per Layer 0 instructions
+- ADR-0007: Add memory_create_decision and memory_import_decisions MCP tools
+- Use forked DB Viewer Enhanced with custom FTS5 WASM
+- .md files are mandatory primary format, SQLite is secondary
 
 ## Next Steps
-1. Reload VS Code and verify items_fts table loads without FTS5 errors
-2. Commit changes to db-viewer fork and push to GitHub
-3. Commit submodule addition to vscode-memory-bank main repo
+1. Restart MCP server to activate new tools
+2. Verify memory_create_decision and memory_import_decisions work end-to-end
+3. Add documentation and examples for MCP tools
 
