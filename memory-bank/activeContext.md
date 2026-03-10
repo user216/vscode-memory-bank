@@ -1,13 +1,17 @@
 # Active Context
 
 ## Current Focus
-Extension v0.2.1 released — MCP status bar fixed, automatic memory bank update rules added
+Forked DB Viewer Enhanced extension with FTS5 support, added as git submodule
 
 ## Recent Changes
-- Fixed MCP status bar button — removed broken child_process.spawn server toggle, now shows .mcp.json config status and opens config on click
-- Added automatic ADR/task/context creation rules to Layer 0 instructions (mandatory, don't wait for user)
-- Bumped extension to v0.2.1, packed and installed
-- Fixed incomplete Claude Agent slash commands list in techContext.md — now lists all 7 commands
+- Forked stopper2408/db-viewer as user216/db-viewer-enhanced on GitHub
+- Built sql.js WASM with FTS5 enabled using Docker (emscripten/emsdk)
+- Added fork as git submodule at db-viewer/ in vscode-memory-bank
+- Modified esbuild.js to use custom FTS5-enabled sql-wasm.wasm from wasm/ dir
+- Pinned dependency versions to available releases
+- Created scripts/build-wasm-fts5.sh for future WASM rebuilds
+- Packaged and installed extension locally (replaces community-dev.db-viewer-enhanced)
+- Added sqlite.sqlite3 setting to VS Code pointing to /usr/bin/sqlite3 (for alexcvzz extension)
 
 ## Current Decisions
 - ADR-0005: Agent is Claude Agent Preview in VS Code Copilot, NOT Claude Code CLI
@@ -16,7 +20,7 @@ Extension v0.2.1 released — MCP status bar fixed, automatic memory bank update
 - Memory bank updates (ADRs, tasks, context) are mandatory and automatic per Layer 0 instructions
 
 ## Next Steps
-1. TASK-003: Real-world testing across different projects
-2. Consider whether extension version should be further bumped to 0.3.0 for next feature release
-3. Verify MCP status bar behavior after VS Code reload
+1. Reload VS Code and verify items_fts table loads without FTS5 errors
+2. Commit changes to db-viewer fork and push to GitHub
+3. Commit submodule addition to vscode-memory-bank main repo
 
