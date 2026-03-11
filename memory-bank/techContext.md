@@ -56,3 +56,4 @@
 ## Dependencies
 - Original instruction: [github/awesome-copilot/instructions/memory-bank.instructions.md](https://github.com/github/awesome-copilot/blob/main/instructions/memory-bank.instructions.md)
 - Research sources: 9 existing memory MCP projects (documented in decisions/ADR-0001)
+- CodeGraphContext: [andriispivakelectrodosg/CodeGraphContext](https://github.com/andriispivakelectrodosg/CodeGraphContext) — forked with SCIP/dead-code fixes, included as git submodule

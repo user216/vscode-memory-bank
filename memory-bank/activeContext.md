@@ -1,19 +1,22 @@
 # Active Context
 
 ## Current Focus
-Completed shared-utils.ts refactoring to deduplicate MCP tool helpers
+Integrated CodeGraphContext fork as git submodule with 10 SCIP/dead-code/call-resolution fixes
 
 ## Recent Changes
-- Created mcp/src/tools/shared-utils.ts — centralizes getMemoryBankPath, slugify, getNextId, updateDecisionIndex, updateTaskIndex, and status constants
-- Updated 6 tool files to import from shared-utils instead of defining locally
-- Fixed DecisionStatus type in types.ts to include 'Rejected'
-- Fixed updateIndex bug in memory-update-status.ts — decisions now correctly default to 'Proposed' status
-- Removed dead VALID_STATUSES constant and unused getDb import from memory-create-task.ts
+- Added CodeGraphContext fork (andriispivakelectrodosg/CodeGraphContext) as git submodule
+- Implemented 10 fixes across 7 files: SCIP fallback, dead code query (File/Class callers), parent context walking (TS/JS anonymous callbacks), .js→.ts import resolution, --scip CLI flag, SCIP indexer scope/kind/env fixes
+- Ran dead code analysis on vscode-memory-bank using CGC MCP — produced dead-code-report.md and dead-code-review-verdict.md
+- Added .mcp.json with memory-bank MCP server and CodeGraphContext MCP server config
+- Previous: shared-utils.ts refactoring to deduplicate MCP tool helpers (ADR-0009)
 
 ## Current Decisions
 - ADR-0008: Auto-commit memory-bank.db via git hooks and extension activation
+- ADR-0009: Extract shared helpers into shared-utils.ts
+- ADR-0010: Integrate CodeGraphContext as submodule for code graph analysis
 
 ## Next Steps
-1. Consider extracting MEMORY_BANK_PATH from index.ts to also use shared getMemoryBankPath()
-2. Monitor for any further duplication patterns as new tools are added
+1. Set up CodeGraphContext venv in submodule path for MCP server usage
+2. Real-world testing of improved dead code detection after CGC fixes
+3. Consider extracting MEMORY_BANK_PATH from index.ts to also use shared getMemoryBankPath()
 
