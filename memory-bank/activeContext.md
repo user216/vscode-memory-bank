@@ -1,24 +1,22 @@
 # Active Context
 
 ## Current Focus
-Added memory_create_decision and memory_import_decisions MCP tools, forked DB Viewer Enhanced with FTS5
+Auto-commit memory-bank.db — 3-layer plug-and-play solution via extension activation, git hooks, and session-stop WAL checkpoint
 
 ## Recent Changes
-- Added memory_create_decision MCP tool — creates ADR files with auto-generated IDs
-- Added memory_import_decisions MCP tool — imports external ADRs or re-syncs existing to SQLite
-- Updated memory-schema.ts to list both new tools
-- Registered both tools in index.ts
-- Created ADR-0007 documenting the decision
-- Forked DB Viewer Enhanced with FTS5 WASM support (db-viewer submodule)
-- Fixed WITHOUT ROWID table handling in DB Viewer Enhanced
+- Added git pre-commit hook installer (extension/src/hooks/install-git-hook.ts) — auto-stages memory-bank.db with WAL checkpoint
+- Added ensureGitConfig() — patches existing workspaces' .gitignore/.gitattributes on activation
+- Updated memoryBank.init to create .gitignore and .gitattributes for new workspaces
+- Updated memory-bank/.gitignore: .mcp/* with !.mcp/memory-bank.db negation, ignore WAL/SHM/journal
+- Created memory-bank/.gitattributes: *.db binary
+- Added WAL checkpoint to session-stop.sh hook for Claude Code sessions
+- Created ADR-0008 documenting the auto-commit decision
 
 ## Current Decisions
-- ADR-0007: Add memory_create_decision and memory_import_decisions MCP tools
-- Use forked DB Viewer Enhanced with custom FTS5 WASM
-- .md files are mandatory primary format, SQLite is secondary
+- ADR-0008: Auto-commit memory-bank.db via git hooks and extension activation
 
 ## Next Steps
-1. Restart MCP server to activate new tools
-2. Verify memory_create_decision and memory_import_decisions work end-to-end
-3. Add documentation and examples for MCP tools
+1. Test extension activation in fresh workspace — verify hook installed and gitignore/gitattributes created
+2. Test pre-commit hook — make a change to DB, commit unrelated file, verify DB auto-staged
+3. Real-world testing across different projects
 

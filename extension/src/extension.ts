@@ -5,6 +5,7 @@ import { DecisionsTreeProvider } from "./sidebar/decisions-provider.js";
 import { MemoryBankStatusBar } from "./statusbar/status-bar.js";
 import { McpServerManager } from "./mcp/server-manager.js";
 import { registerCommands } from "./commands/index.js";
+import { installGitHook, ensureGitConfig } from "./hooks/install-git-hook.js";
 
 let statusBar: MemoryBankStatusBar | undefined;
 let fileWatcher: vscode.FileSystemWatcher | undefined;
@@ -73,6 +74,12 @@ export function activate(context: vscode.ExtensionContext): void {
     mbRoot,
     extensionUri: context.extensionUri,
   });
+
+  // Install git pre-commit hook to auto-stage memory-bank.db
+  installGitHook(workspaceRoot);
+
+  // Ensure .gitignore/.gitattributes are configured for existing workspaces
+  ensureGitConfig(workspaceRoot);
 }
 
 export function deactivate(): void {

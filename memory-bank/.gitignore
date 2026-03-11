@@ -1,1 +1,10 @@
-.mcp/
+# MCP server runtime directory
+.mcp/*
+
+# Keep the SQLite database (contains imported items, FTS index, and links)
+!.mcp/memory-bank.db
+
+# Ignore transient WAL/journal files (recreated at runtime)
+*.db-wal
+*.db-shm
+*.db-journal

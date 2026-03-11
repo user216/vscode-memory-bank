@@ -93,6 +93,20 @@ export function registerCommands(
         ),
       );
 
+      // Create .gitignore — allow the SQLite DB, ignore transient WAL files
+      await vscode.workspace.fs.writeFile(
+        vscode.Uri.joinPath(mbDir, ".gitignore"),
+        encoder.encode(
+          "# MCP server runtime directory\n.mcp/*\n\n# Keep the SQLite database (contains imported items, FTS index, and links)\n!.mcp/memory-bank.db\n\n# Ignore transient WAL/journal files (recreated at runtime)\n*.db-wal\n*.db-shm\n*.db-journal\n",
+        ),
+      );
+
+      // Create .gitattributes — mark DB as binary so git doesn't diff it
+      await vscode.workspace.fs.writeFile(
+        vscode.Uri.joinPath(mbDir, ".gitattributes"),
+        encoder.encode("*.db binary\n"),
+      );
+
       vscode.window.showInformationMessage(
         "Memory Bank initialized. Fill in projectbrief.md to get started.",
       );

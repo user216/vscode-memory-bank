@@ -64,4 +64,11 @@ if [ -f "$MEMORY_BANK/activeContext.md" ]; then
   fi
 fi
 
+# Checkpoint WAL so memory-bank.db is ready for git commit
+if [ -f "$MEMORY_BANK/.mcp/memory-bank.db" ]; then
+  if command -v sqlite3 &>/dev/null; then
+    sqlite3 "$MEMORY_BANK/.mcp/memory-bank.db" "PRAGMA wal_checkpoint(TRUNCATE);" 2>/dev/null || true
+  fi
+fi
+
 echo '{}'
