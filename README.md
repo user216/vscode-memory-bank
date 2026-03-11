@@ -122,7 +122,7 @@ See [ADR-0004](memory-bank/decisions/ADR-0004-no-model-version-pinning.md) for t
 
 ## MCP Server (Layer 5)
 
-Six tools for structured memory access:
+MCP tools for structured memory access:
 
 | Tool | Purpose |
 |------|---------|
@@ -130,6 +130,8 @@ Six tools for structured memory access:
 | `memory_query` | Structured query by type, status, date range |
 | `memory_recall` | Token-budgeted context retrieval with priority strategies |
 | `memory_link` | Create typed relationships between items |
+| `memory_unlink` | Delete a relationship between two items |
+| `memory_update_link` | Update the relation type of an existing link |
 | `memory_graph` | Traverse knowledge graph from a starting item |
 | `memory_schema` | Self-describing schema for tool discovery |
 

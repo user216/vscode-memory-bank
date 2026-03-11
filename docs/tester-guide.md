@@ -157,14 +157,16 @@ VS Code may show a **trust prompt** the first time: "Do you trust this MCP serve
 
 1. Open Copilot Chat (`Ctrl+Alt+I`)
 2. Click the **Configure Tools** button (wrench/gear icon) in the chat input area
-3. You should see 6 tools listed under **memory-bank**:
+3. You should see tools listed under **memory-bank** including:
    - `memory_search`
    - `memory_query`
    - `memory_recall`
    - `memory_link`
+   - `memory_unlink`
+   - `memory_update_link`
    - `memory_graph`
    - `memory_schema`
-4. Make sure all 6 are **enabled** (toggled ON)
+4. Make sure all are **enabled** (toggled ON)
 
 ## Step 7: Test the Tools
 
@@ -264,7 +266,7 @@ What tasks are currently in progress in this project?
 
 - **Stdio transport** means each VS Code window spawns its own `node` child process. No shared TCP port, no port conflicts.
 - **`${workspaceFolder}/memory-bank`** resolves to different paths for different projects, so each server has its own database file (`memory-bank/.mcp/memory-bank.db`).
-- **SQLite WAL mode** (enabled in the server code) allows multiple simultaneous readers and one writer. Since the MCP server is overwhelmingly read-heavy (only `memory_link` writes), contention is negligible.
+- **SQLite WAL mode** (enabled in the server code) allows multiple simultaneous readers and one writer. Since the MCP server is overwhelmingly read-heavy (only `memory_link`, `memory_unlink`, and `memory_update_link` write to links), contention is negligible.
 - **The file watcher** (`fs.watch`) is also per-process and per-directory — no cross-window interference.
 
 **The one edge case that could theoretically cause a brief hiccup:** If two windows have the same project open and both AI sessions try to create links at the exact same millisecond, SQLite may return `SQLITE_BUSY` for one of them, which surfaces as a tool error. The retry would succeed. In practice this has near-zero probability.

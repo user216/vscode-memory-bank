@@ -130,6 +130,52 @@ Validates both items exist. Handles duplicates gracefully.
 
 ---
 
+#### `memory_unlink`
+
+Delete a relationship between two items.
+
+```json
+{
+  "source": "TASK-001",
+  "target": "ADR-0003",
+  "relation": "implements"
+}
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `source` | string | Yes | — | Source item ID |
+| `target` | string | Yes | — | Target item ID |
+| `relation` | string | Yes | — | Relationship type to delete (must match exactly) |
+
+Returns confirmation or "not found" message.
+
+---
+
+#### `memory_update_link`
+
+Update the relation type of an existing link.
+
+```json
+{
+  "source": "TASK-001",
+  "target": "ADR-0003",
+  "old_relation": "references",
+  "new_relation": "implements"
+}
+```
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `source` | string | Yes | — | Source item ID |
+| `target` | string | Yes | — | Target item ID |
+| `old_relation` | string | Yes | — | Current relationship type |
+| `new_relation` | string | Yes | — | New relationship type |
+
+Guards against no-op updates and unique constraint violations.
+
+---
+
 #### `memory_graph`
 
 Traverse the knowledge graph from a starting item.

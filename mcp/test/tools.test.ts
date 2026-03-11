@@ -268,6 +268,89 @@ describe("Tool Integration Tests", () => {
     });
   });
 
+  describe("memory_unlink", () => {
+    it("deletes an existing link", () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+
+      // Create a link to delete
+      db.prepare(
+        "INSERT OR IGNORE INTO links (source_id, target_id, relation, created_at) VALUES (?, ?, ?, ?)",
+      ).run("TASK-001", "ADR-0001", "test-delete", now);
+
+      // Verify it exists
+      const before = db
+        .prepare("SELECT 1 FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
+        .get("TASK-001", "ADR-0001", "test-delete");
+      expect(before).toBeDefined();
+
+      // Delete it
+      const result = db
+        .prepare("DELETE FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
+        .run("TASK-001", "ADR-0001", "test-delete");
+      expect(result.changes).toBe(1);
+
+      // Verify it's gone
+      const after = db
+        .prepare("SELECT 1 FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
+        .get("TASK-001", "ADR-0001", "test-delete");
+      expect(after).toBeUndefined();
+    });
+
+    it("returns 0 changes for non-existent link", () => {
+      const db = getDb();
+
+      const result = db
+        .prepare("DELETE FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
+        .run("TASK-999", "ADR-9999", "nonexistent");
+
+      expect(result.changes).toBe(0);
+    });
+  });
+
+  describe("memory_update_link", () => {
+    it("updates the relation type of an existing link", () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+
+      // Create a link to update
+      db.prepare(
+        "INSERT OR IGNORE INTO links (source_id, target_id, relation, created_at) VALUES (?, ?, ?, ?)",
+      ).run("TASK-001", "ADR-0001", "test-old-rel", now);
+
+      // Update it
+      const result = db
+        .prepare("UPDATE links SET relation = ? WHERE source_id = ? AND target_id = ? AND relation = ?")
+        .run("test-new-rel", "TASK-001", "ADR-0001", "test-old-rel");
+      expect(result.changes).toBe(1);
+
+      // Verify the old relation is gone and new one exists
+      const oldLink = db
+        .prepare("SELECT 1 FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
+        .get("TASK-001", "ADR-0001", "test-old-rel");
+      expect(oldLink).toBeUndefined();
+
+      const newLink = db
+        .prepare("SELECT 1 FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
+        .get("TASK-001", "ADR-0001", "test-new-rel");
+      expect(newLink).toBeDefined();
+
+      // Cleanup
+      db.prepare("DELETE FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
+        .run("TASK-001", "ADR-0001", "test-new-rel");
+    });
+
+    it("returns 0 changes for non-existent link", () => {
+      const db = getDb();
+
+      const result = db
+        .prepare("UPDATE links SET relation = ? WHERE source_id = ? AND target_id = ? AND relation = ?")
+        .run("new-rel", "TASK-999", "ADR-9999", "nonexistent");
+
+      expect(result.changes).toBe(0);
+    });
+  });
+
   describe("memory_graph", () => {
     it("finds outgoing links from an item", () => {
       const db = getDb();

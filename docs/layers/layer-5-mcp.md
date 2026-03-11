@@ -52,6 +52,8 @@ VS Code Copilot (Claude Opus latest)
 | `memory_query` | Structured queries by type, status, date range | `type?`, `status?`, `since?`, `until?` |
 | `memory_recall` | Token-budgeted context retrieval for session start | `budget?`, `priority?` (foundational/recent/active) |
 | `memory_link` | Create typed relationships between memory items | `source`, `target`, `relation` |
+| `memory_unlink` | Delete a relationship between two items | `source`, `target`, `relation` |
+| `memory_update_link` | Update the relation type of an existing link | `source`, `target`, `old_relation`, `new_relation` |
 | `memory_graph` | Traverse knowledge graph from a starting item | `item`, `depth?`, `direction?` |
 | `memory_schema` | Self-describing schema for tool discovery | (none) |
 

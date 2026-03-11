@@ -580,6 +580,37 @@ memory_link({ source: "TASK-001", target: "ADR-0001", relation: "implements" })
 memory_link({ source: "ADR-0002", target: "ADR-0001", relation: "supersedes" })
 ```
 
+##### `memory_unlink` — Delete relationships
+
+Remove a typed relationship between two items.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `source` | string | Yes | Source item ID |
+| `target` | string | Yes | Target item ID |
+| `relation` | string | Yes | Relationship type to delete (must match exactly) |
+
+**Example:**
+```
+memory_unlink({ source: "TASK-001", target: "ADR-0001", relation: "references" })
+```
+
+##### `memory_update_link` — Update relationship type
+
+Change the relation type of an existing link.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `source` | string | Yes | Source item ID |
+| `target` | string | Yes | Target item ID |
+| `old_relation` | string | Yes | Current relationship type |
+| `new_relation` | string | Yes | New relationship type |
+
+**Example:**
+```
+memory_update_link({ source: "TASK-001", target: "ADR-0001", old_relation: "references", new_relation: "implements" })
+```
+
 ##### `memory_graph` — Traverse knowledge graph
 
 Explore connections from a starting item using BFS traversal.

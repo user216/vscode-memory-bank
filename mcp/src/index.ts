@@ -9,6 +9,8 @@ import { registerMemorySearch } from "./tools/memory-search.js";
 import { registerMemoryQuery } from "./tools/memory-query.js";
 import { registerMemoryRecall } from "./tools/memory-recall.js";
 import { registerMemoryLink } from "./tools/memory-link.js";
+import { registerMemoryUnlink } from "./tools/memory-unlink.js";
+import { registerMemoryUpdateLink } from "./tools/memory-update-link.js";
 import { registerMemoryGraph } from "./tools/memory-graph.js";
 import { registerMemorySchema } from "./tools/memory-schema.js";
 import { registerMemoryCreateTask } from "./tools/memory-create-task.js";
@@ -45,6 +47,8 @@ async function main(): Promise<void> {
   registerMemoryQuery(server);
   registerMemoryRecall(server);
   registerMemoryLink(server);
+  registerMemoryUnlink(server);
+  registerMemoryUpdateLink(server);
   registerMemoryGraph(server);
   registerMemorySchema(server);
   registerMemoryCreateTask(server);

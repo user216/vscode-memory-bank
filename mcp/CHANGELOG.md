@@ -1,5 +1,11 @@
 # Changelog — MCP Server
 
+## 1.1.0
+
+### Added
+- `memory_unlink`: Delete a relationship between two memory bank items
+- `memory_update_link`: Update the relation type of an existing link
+
 ## 1.0.0
 
 ### Added

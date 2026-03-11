@@ -26,7 +26,7 @@ When Memory Bank MCP tools are available, **always prefer them** over reading ra
 | Load session context | `memory_recall` (token-budgeted) | Read each `.md` file manually |
 | Search across memories | `memory_search` (full-text FTS5) | Grep through files |
 | Query tasks/decisions | `memory_query` (by type, status, date) | Read `_index.md` files |
-| Track relationships | `memory_link` (typed edges) | Add references in markdown |
+| Track relationships | `memory_link` / `memory_unlink` / `memory_update_link` | Add references in markdown |
 | Explore connections | `memory_graph` (BFS traversal) | Read files and follow references |
 | Discover data model | `memory_schema` | Inspect folder structure |
 | Create new task | `memory_create_task` (auto-ID, formatting) | Create file manually |

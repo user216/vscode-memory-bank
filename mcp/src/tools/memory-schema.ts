@@ -50,6 +50,8 @@ export function registerMemorySchema(server: McpServer): void {
           memory_query: "Structured query by type, status, date range",
           memory_recall: "Token-budgeted context retrieval with priority strategies",
           memory_link: "Create typed relationships between items",
+          memory_unlink: "Delete a relationship between two items",
+          memory_update_link: "Update the relation type of an existing link",
           memory_graph: "Traverse knowledge graph from a starting item",
           memory_schema: "This tool — describes the data model",
           memory_create_task: "Create a new task with auto-generated ID, proper formatting, and index update",
