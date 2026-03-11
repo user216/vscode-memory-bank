@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "mbvmb-mcp": {
+      "command": "node",
+      "args": [
+        "/home/narayanaya/vscode-memory-bank/mcp/build/index.js"
+      ],
+      "env": {
+        "MEMORY_BANK_PATH": "/home/narayanaya/vscode-memory-bank/memory-bank"
+      }
+    },
+    "CodeGraphContext": {
+      "command": "/home/narayanaya/vscode-memory-bank/CodeGraphContext/.venv/bin/cgc",
+      "args": [
+        "mcp",
+        "start"
+      ],
+      "disabled": false
+    }
+  }
+}
