@@ -1,6 +1,6 @@
 # ADR-0010: Integrate CodeGraphContext as submodule for code graph analysis
 
-**Status:** Accepted
+**Status:** Superseded by ADR-0011
 **Date:** 2026-03-11
 **Deciders:**
 

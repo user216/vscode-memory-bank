@@ -1,6 +1,3 @@
 [submodule "db-viewer"]
 	path = db-viewer
 	url = https://github.com/user216/db-viewer-enhanced.git
-[submodule "CodeGraphContext"]
-	path = CodeGraphContext
-	url = https://github.com/andriispivakelectrodosg/CodeGraphContext.git

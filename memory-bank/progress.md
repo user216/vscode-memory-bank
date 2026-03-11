@@ -3,9 +3,8 @@
 ## What's Working
 - GitHub repository: https://github.com/user216/vscode-memory-bank
 - Git submodule linked from 8marta parent project
-- **CodeGraphContext**: Fork integrated as submodule (andriispivakelectrodosg/CodeGraphContext) with 10 fixes for SCIP, dead code detection, call resolution
 - **Dead code analysis**: CGC-powered reports (dead-code-report.md, dead-code-review-verdict.md) identifying real dead code vs false positives
-- **MCP config**: .mcp.json at project root with memory-bank MCP server + CodeGraphContext MCP server
+- **MCP config**: .mcp.json at project root with memory-bank MCP server + CodeGraphContext MCP server (CGC as external end-user tool at /home/narayanaya/CodeGraphContext)
 - **Layer 0**: Custom instruction file (`instructions/memory-bank.instructions.md`) — additive extension of original
 - **Layer 1**: Agent skill (`skills/managing-memory-bank/SKILL.md`) + templates (projectbrief, task, decision)
 - **Layer 2**: Prompt files — `/memory-init`, `/memory-update`, `/memory-review`, `/memory-task`

@@ -10,7 +10,7 @@
       }
     },
     "CodeGraphContext": {
-      "command": "/home/narayanaya/vscode-memory-bank/CodeGraphContext/.venv/bin/cgc",
+      "command": "/home/narayanaya/CodeGraphContext/.venv/bin/cgc",
       "args": [
         "mcp",
         "start"
