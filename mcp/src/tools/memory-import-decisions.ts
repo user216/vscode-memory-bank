@@ -3,83 +3,7 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { syncSingleFile } from "../sync.js";
-
-function getMemoryBankPath(): string {
-  return (
-    process.env.MEMORY_BANK_PATH ||
-    path.join(process.cwd(), "memory-bank")
-  );
-}
-
-function getNextAdrId(decisionsDir: string): string {
-  const files = fs.existsSync(decisionsDir)
-    ? fs.readdirSync(decisionsDir).filter((f) => f.match(/^ADR-\d{4}/))
-    : [];
-
-  let maxNum = 0;
-  for (const f of files) {
-    const m = f.match(/^ADR-(\d{4})/);
-    if (m) {
-      const n = parseInt(m[1], 10);
-      if (n > maxNum) maxNum = n;
-    }
-  }
-
-  return `ADR-${String(maxNum + 1).padStart(4, "0")}`;
-}
-
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 50);
-}
-
-function updateDecisionIndex(decisionsDir: string): void {
-  const indexPath = path.join(decisionsDir, "_index.md");
-  const files = fs
-    .readdirSync(decisionsDir)
-    .filter((f) => f.match(/^ADR-\d{4}/) && f.endsWith(".md"));
-
-  const decisions: Array<{ id: string; title: string; status: string }> = [];
-
-  for (const f of files) {
-    const content = fs.readFileSync(path.join(decisionsDir, f), "utf-8");
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-    const idMatch = f.match(/^(ADR-\d{4})/);
-    if (idMatch) {
-      decisions.push({
-        id: idMatch[1],
-        title: titleMatch ? titleMatch[1].trim() : idMatch[1],
-        status: statusMatch ? statusMatch[1].trim() : "Proposed",
-      });
-    }
-  }
-
-  const groups: Record<string, typeof decisions> = {};
-  for (const d of decisions) {
-    if (!groups[d.status]) groups[d.status] = [];
-    groups[d.status].push(d);
-  }
-
-  let md = "# Decisions Index\n\n";
-  for (const status of ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"]) {
-    md += `## ${status}\n\n`;
-    const group = groups[status];
-    if (!group || group.length === 0) {
-      md += `_None_\n\n`;
-    } else {
-      for (const d of group) {
-        md += `- **${d.id}**: ${d.title}\n`;
-      }
-      md += "\n";
-    }
-  }
-
-  fs.writeFileSync(indexPath, md);
-}
+import { getMemoryBankPath, slugify, getNextId, updateDecisionIndex, DECISION_STATUSES } from "./shared-utils.js";
 
 interface FrontMatter {
   title?: string;
@@ -150,11 +74,9 @@ function extractStatus(frontMatter: FrontMatter, body: string): string | null {
   return null;
 }
 
-const VALID_DECISION_STATUSES = ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"];
-
 function normalizeStatus(raw: string): string {
   const lower = raw.toLowerCase().replace(/[^a-z]/g, "");
-  for (const s of VALID_DECISION_STATUSES) {
+  for (const s of DECISION_STATUSES) {
     if (s.toLowerCase().replace(/[^a-z]/g, "") === lower) return s;
   }
   // Map common aliases
@@ -269,13 +191,13 @@ export function registerMemoryImportDecisions(server: McpServer): void {
           const existingFile = fs.readdirSync(decisionsDir).find((f) => f.startsWith(candidateId));
           if (existingFile) {
             // ID conflict — assign a new one
-            adrId = getNextAdrId(decisionsDir);
+            adrId = getNextId(decisionsDir, "ADR-", 4);
           } else {
             adrId = candidateId;
           }
           fileName = `${adrId}-${slugify(title)}.md`;
         } else {
-          adrId = getNextAdrId(decisionsDir);
+          adrId = getNextId(decisionsDir, "ADR-", 4);
           fileName = `${adrId}-${slugify(title)}.md`;
         }
 

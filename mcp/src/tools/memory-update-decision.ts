@@ -4,58 +4,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { getDb } from "../db.js";
 import { syncSingleFile } from "../sync.js";
-
-function getMemoryBankPath(): string {
-  return (
-    process.env.MEMORY_BANK_PATH ||
-    path.join(process.cwd(), "memory-bank")
-  );
-}
-
-function updateDecisionIndex(decisionsDir: string): void {
-  const indexPath = path.join(decisionsDir, "_index.md");
-  const files = fs
-    .readdirSync(decisionsDir)
-    .filter((f) => f.match(/^ADR-\d{4}/) && f.endsWith(".md"));
-
-  const decisions: Array<{ id: string; title: string; status: string }> = [];
-
-  for (const f of files) {
-    const content = fs.readFileSync(path.join(decisionsDir, f), "utf-8");
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-    const idMatch = f.match(/^(ADR-\d{4})/);
-    if (idMatch) {
-      decisions.push({
-        id: idMatch[1],
-        title: titleMatch ? titleMatch[1].trim() : idMatch[1],
-        status: statusMatch ? statusMatch[1].trim() : "Proposed",
-      });
-    }
-  }
-
-  const groups: Record<string, typeof decisions> = {};
-  for (const d of decisions) {
-    if (!groups[d.status]) groups[d.status] = [];
-    groups[d.status].push(d);
-  }
-
-  let md = "# Decisions Index\n\n";
-  for (const status of ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"]) {
-    md += `## ${status}\n\n`;
-    const group = groups[status];
-    if (!group || group.length === 0) {
-      md += `_None_\n\n`;
-    } else {
-      for (const d of group) {
-        md += `- **${d.id}**: ${d.title}\n`;
-      }
-      md += "\n";
-    }
-  }
-
-  fs.writeFileSync(indexPath, md);
-}
+import { getMemoryBankPath, updateDecisionIndex } from "./shared-utils.js";
 
 interface AdrSections {
   title: string;

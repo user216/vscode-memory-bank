@@ -14,6 +14,7 @@ _None_
 - **ADR-0006**: ADR-0006: MCP Config Location is .mcp.json at Project Root
 - **ADR-0007**: ADR-0007: Add memory_create_decision and memory_import_decisions MCP tools
 - **ADR-0008**: ADR-0008: Auto-commit memory-bank.db via git hooks and extension activation
+- **ADR-0009**: ADR-0009: Extract shared helpers into shared-utils.ts
 
 ## Deprecated
 

@@ -2,85 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getDb } from "../db.js";
 import { syncSingleFile } from "../sync.js";
-
-const VALID_STATUSES = ["Pending", "In Progress", "Completed", "Abandoned"] as const;
-
-function getMemoryBankPath(): string {
-  return (
-    process.env.MEMORY_BANK_PATH ||
-    path.join(process.cwd(), "memory-bank")
-  );
-}
-
-function getNextTaskId(tasksDir: string): string {
-  const files = fs.existsSync(tasksDir)
-    ? fs.readdirSync(tasksDir).filter((f) => f.match(/^TASK-\d{3}/))
-    : [];
-
-  let maxNum = 0;
-  for (const f of files) {
-    const m = f.match(/^TASK-(\d{3})/);
-    if (m) {
-      const n = parseInt(m[1], 10);
-      if (n > maxNum) maxNum = n;
-    }
-  }
-
-  return `TASK-${String(maxNum + 1).padStart(3, "0")}`;
-}
-
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 50);
-}
-
-function updateTaskIndex(tasksDir: string): void {
-  const indexPath = path.join(tasksDir, "_index.md");
-  const files = fs
-    .readdirSync(tasksDir)
-    .filter((f) => f.match(/^TASK-\d{3}/) && f.endsWith(".md"));
-
-  const tasks: Array<{ id: string; title: string; status: string }> = [];
-
-  for (const f of files) {
-    const content = fs.readFileSync(path.join(tasksDir, f), "utf-8");
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-    const idMatch = f.match(/^(TASK-\d{3})/);
-    if (idMatch) {
-      tasks.push({
-        id: idMatch[1],
-        title: titleMatch ? titleMatch[1].trim() : idMatch[1],
-        status: statusMatch ? statusMatch[1].trim() : "Pending",
-      });
-    }
-  }
-
-  // Group by status
-  const groups: Record<string, typeof tasks> = {};
-  for (const t of tasks) {
-    if (!groups[t.status]) groups[t.status] = [];
-    groups[t.status].push(t);
-  }
-
-  let md = "# Tasks\n\n";
-  for (const status of ["In Progress", "Pending", "Completed", "Abandoned"]) {
-    const group = groups[status];
-    if (!group || group.length === 0) continue;
-    md += `## ${status}\n\n`;
-    for (const t of group) {
-      md += `- **${t.id}**: ${t.title}\n`;
-    }
-    md += "\n";
-  }
-
-  fs.writeFileSync(indexPath, md);
-}
+import { getMemoryBankPath, slugify, getNextId, updateTaskIndex } from "./shared-utils.js";
 
 export function registerMemoryCreateTask(server: McpServer): void {
   server.tool(
@@ -106,7 +29,7 @@ export function registerMemoryCreateTask(server: McpServer): void {
         fs.mkdirSync(tasksDir, { recursive: true });
       }
 
-      const taskId = getNextTaskId(tasksDir);
+      const taskId = getNextId(tasksDir, "TASK-", 3);
       const slug = slugify(title);
       const fileName = `${taskId}-${slug}.md`;
       const filePath = path.join(tasksDir, fileName);

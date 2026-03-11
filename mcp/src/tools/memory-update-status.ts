@@ -4,66 +4,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { getDb } from "../db.js";
 import { syncSingleFile } from "../sync.js";
+import { getMemoryBankPath, updateDecisionIndex, updateTaskIndex, TASK_STATUSES, DECISION_STATUSES } from "./shared-utils.js";
 
-const TASK_STATUSES = ["Pending", "In Progress", "Completed", "Abandoned"] as const;
-const DECISION_STATUSES = ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"] as const;
 const ALL_STATUSES = [...TASK_STATUSES, ...DECISION_STATUSES];
-
-function getMemoryBankPath(): string {
-  return (
-    process.env.MEMORY_BANK_PATH ||
-    path.join(process.cwd(), "memory-bank")
-  );
-}
-
-function updateIndex(dir: string, type: "tasks" | "decisions"): void {
-  const indexPath = path.join(dir, "_index.md");
-  const prefix = type === "tasks" ? "TASK-" : "ADR-";
-  const files = fs
-    .readdirSync(dir)
-    .filter((f) => f.startsWith(prefix) && f.endsWith(".md"));
-
-  const items: Array<{ id: string; title: string; status: string }> = [];
-
-  for (const f of files) {
-    const content = fs.readFileSync(path.join(dir, f), "utf-8");
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-    const idMatch = f.match(new RegExp(`^(${prefix}\\d{3,4})`));
-    if (idMatch) {
-      items.push({
-        id: idMatch[1],
-        title: titleMatch ? titleMatch[1].trim() : idMatch[1],
-        status: statusMatch ? statusMatch[1].trim() : "Pending",
-      });
-    }
-  }
-
-  const statusOrder =
-    type === "tasks"
-      ? ["In Progress", "Pending", "Completed", "Abandoned"]
-      : ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"];
-
-  const groups: Record<string, typeof items> = {};
-  for (const item of items) {
-    if (!groups[item.status]) groups[item.status] = [];
-    groups[item.status].push(item);
-  }
-
-  const heading = type === "tasks" ? "Tasks" : "Decisions";
-  let md = `# ${heading}\n\n`;
-  for (const status of statusOrder) {
-    const group = groups[status];
-    if (!group || group.length === 0) continue;
-    md += `## ${status}\n\n`;
-    for (const item of group) {
-      md += `- **${item.id}**: ${item.title}\n`;
-    }
-    md += "\n";
-  }
-
-  fs.writeFileSync(indexPath, md);
-}
 
 export function registerMemoryUpdateStatus(server: McpServer): void {
   server.tool(
@@ -194,9 +137,9 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
       // Update the index
       const parentDir = path.dirname(filePath);
       if (item.type === "task") {
-        updateIndex(parentDir, "tasks");
+        updateTaskIndex(parentDir);
       } else if (item.type === "decision") {
-        updateIndex(parentDir, "decisions");
+        updateDecisionIndex(parentDir);
       }
 
       // Sync to SQLite

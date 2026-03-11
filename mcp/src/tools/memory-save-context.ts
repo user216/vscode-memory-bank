@@ -3,13 +3,7 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { syncSingleFile } from "../sync.js";
-
-function getMemoryBankPath(): string {
-  return (
-    process.env.MEMORY_BANK_PATH ||
-    path.join(process.cwd(), "memory-bank")
-  );
-}
+import { getMemoryBankPath } from "./shared-utils.js";
 
 export function registerMemorySaveContext(server: McpServer): void {
   server.tool(

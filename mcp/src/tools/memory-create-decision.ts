@@ -3,84 +3,7 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { syncSingleFile } from "../sync.js";
-
-function getMemoryBankPath(): string {
-  return (
-    process.env.MEMORY_BANK_PATH ||
-    path.join(process.cwd(), "memory-bank")
-  );
-}
-
-function getNextAdrId(decisionsDir: string): string {
-  const files = fs.existsSync(decisionsDir)
-    ? fs.readdirSync(decisionsDir).filter((f) => f.match(/^ADR-\d{4}/))
-    : [];
-
-  let maxNum = 0;
-  for (const f of files) {
-    const m = f.match(/^ADR-(\d{4})/);
-    if (m) {
-      const n = parseInt(m[1], 10);
-      if (n > maxNum) maxNum = n;
-    }
-  }
-
-  return `ADR-${String(maxNum + 1).padStart(4, "0")}`;
-}
-
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 50);
-}
-
-function updateDecisionIndex(decisionsDir: string): void {
-  const indexPath = path.join(decisionsDir, "_index.md");
-  const files = fs
-    .readdirSync(decisionsDir)
-    .filter((f) => f.match(/^ADR-\d{4}/) && f.endsWith(".md"));
-
-  const decisions: Array<{ id: string; title: string; status: string }> = [];
-
-  for (const f of files) {
-    const content = fs.readFileSync(path.join(decisionsDir, f), "utf-8");
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-    const idMatch = f.match(/^(ADR-\d{4})/);
-    if (idMatch) {
-      decisions.push({
-        id: idMatch[1],
-        title: titleMatch ? titleMatch[1].trim() : idMatch[1],
-        status: statusMatch ? statusMatch[1].trim() : "Proposed",
-      });
-    }
-  }
-
-  // Group by status
-  const groups: Record<string, typeof decisions> = {};
-  for (const d of decisions) {
-    if (!groups[d.status]) groups[d.status] = [];
-    groups[d.status].push(d);
-  }
-
-  let md = "# Decisions Index\n\n";
-  for (const status of ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"]) {
-    md += `## ${status}\n\n`;
-    const group = groups[status];
-    if (!group || group.length === 0) {
-      md += `_None_\n\n`;
-    } else {
-      for (const d of group) {
-        md += `- **${d.id}**: ${d.title}\n`;
-      }
-      md += "\n";
-    }
-  }
-
-  fs.writeFileSync(indexPath, md);
-}
+import { getMemoryBankPath, slugify, getNextId, updateDecisionIndex, DECISION_STATUSES } from "./shared-utils.js";
 
 export function registerMemoryCreateDecision(server: McpServer): void {
   server.tool(
@@ -91,7 +14,7 @@ export function registerMemoryCreateDecision(server: McpServer): void {
       context: z.string().describe("Context section — the problem, situation, or forces prompting this decision. Can be multi-line."),
       decision: z.string().describe("Decision section — what was decided and why. Can be multi-line."),
       status: z
-        .enum(["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"])
+        .enum(DECISION_STATUSES)
         .optional()
         .default("Proposed")
         .describe("Initial status (default: 'Proposed'). Use 'Accepted' if decision is already final."),
@@ -122,7 +45,7 @@ export function registerMemoryCreateDecision(server: McpServer): void {
         fs.mkdirSync(decisionsDir, { recursive: true });
       }
 
-      const adrId = getNextAdrId(decisionsDir);
+      const adrId = getNextId(decisionsDir, "ADR-", 4);
       const slug = slugify(title);
       const fileName = `${adrId}-${slug}.md`;
       const filePath = path.join(decisionsDir, fileName);

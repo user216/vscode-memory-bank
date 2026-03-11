@@ -2,7 +2,7 @@ export type ItemType = "core" | "task" | "decision";
 
 export type TaskStatus = "Pending" | "In Progress" | "Completed" | "Abandoned";
 
-export type DecisionStatus = "Proposed" | "Accepted" | "Deprecated" | "Superseded";
+export type DecisionStatus = "Proposed" | "Accepted" | "Deprecated" | "Superseded" | "Rejected";
 
 export interface ParsedItem {
   id: string;
