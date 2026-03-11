@@ -1,2 +1,9 @@
 {
+  "hooks": {
+    "Stop": [
+      {
+        "command": "bash hooks/scripts/debounced-build.sh"
+      }
+    ]
+  }
 }

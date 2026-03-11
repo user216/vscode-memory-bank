@@ -9,12 +9,16 @@
         "MEMORY_BANK_PATH": "/home/narayanaya/vscode-memory-bank/memory-bank"
       }
     },
-    "CodeGraphContext": {
+    "CodeGraphContext-vmb-mcp": {
       "command": "/home/narayanaya/CodeGraphContext/.venv/bin/cgc",
       "args": [
         "mcp",
         "start"
       ],
+      "env": {
+        "DEFAULT_DATABASE": "kuzudb",
+        "KUZUDB_PATH": "/home/narayanaya/vscode-memory-bank/.codegraphcontext/kuzudb"
+      },
       "disabled": false
     }
   }
