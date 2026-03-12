@@ -1,14 +1,15 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
+import { McpServerBootstrap } from "./server-bootstrap.js";
+import { generateMcpConfigs } from "./config-generator.js";
 
 /**
  * MCP status bar indicator.
  *
- * The Claude Agent SDK (via .mcp.json) manages the actual MCP server lifecycle.
- * This class provides a status bar indicator showing whether .mcp.json is
- * configured, and clicking it opens the .mcp.json file for inspection.
- *
- * It does NOT spawn or manage a server process — that's the SDK's job.
+ * The Claude Agent SDK (via .mcp.json) and GitHub Copilot (via .vscode/mcp.json)
+ * manage the actual MCP server lifecycle. This class provides a status bar
+ * indicator showing whether MCP configs exist, and clicking it opens the config
+ * or offers to generate it.
  */
 export class McpServerManager implements vscode.Disposable {
   private outputChannel: vscode.OutputChannel;
@@ -27,7 +28,7 @@ export class McpServerManager implements vscode.Disposable {
     this.detectConfig();
   }
 
-  /** Check if .mcp.json exists and update status bar accordingly. */
+  /** Check if MCP config files exist and update status bar. */
   async detectConfig(): Promise<void> {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceRoot) {
@@ -35,22 +36,25 @@ export class McpServerManager implements vscode.Disposable {
       return;
     }
 
-    const mcpConfigPath = path.join(workspaceRoot, ".mcp.json");
-    try {
-      await vscode.workspace.fs.stat(vscode.Uri.file(mcpConfigPath));
+    const claudeExists = await this.fileExists(
+      path.join(workspaceRoot, ".mcp.json"),
+    );
+    const copilotExists = await this.fileExists(
+      path.join(workspaceRoot, ".vscode", "mcp.json"),
+    );
+
+    if (claudeExists || copilotExists) {
       this.setStatus("configured");
       this.outputChannel.appendLine(
-        `MCP config found: ${mcpConfigPath}`,
+        `MCP config found: ${claudeExists ? ".mcp.json" : ""} ${copilotExists ? ".vscode/mcp.json" : ""}`.trim(),
       );
-    } catch {
+    } else {
       this.setStatus("not-configured");
-      this.outputChannel.appendLine(
-        `No .mcp.json found at ${mcpConfigPath}. MCP server not configured.`,
-      );
+      this.outputChannel.appendLine("No MCP config found.");
     }
   }
 
-  /** Open .mcp.json for inspection, or show a message if not found. */
+  /** Open MCP config for inspection, or generate it if missing. */
   async openConfig(): Promise<void> {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceRoot) {
@@ -62,46 +66,47 @@ export class McpServerManager implements vscode.Disposable {
       path.join(workspaceRoot, ".mcp.json"),
     );
 
-    try {
-      await vscode.workspace.fs.stat(mcpConfigUri);
+    if (await this.fileExists(mcpConfigUri.fsPath)) {
       await vscode.window.showTextDocument(mcpConfigUri);
-    } catch {
-      const create = await vscode.window.showWarningMessage(
-        "No .mcp.json found. The Claude Agent SDK uses .mcp.json at the project root to register MCP servers.",
-        "Create .mcp.json",
-      );
-      if (create) {
-        const encoder = new TextEncoder();
-        const template = JSON.stringify(
-          {
-            mcpServers: {
-              "memory-bank": {
-                command: "node",
-                args: ["mcp/build/index.js"],
-                env: {
-                  MEMORY_BANK_PATH: "${workspaceFolder}/memory-bank",
-                },
-              },
-            },
-          },
-          null,
-          2,
-        );
-        await vscode.workspace.fs.writeFile(mcpConfigUri, encoder.encode(template));
-        await vscode.window.showTextDocument(mcpConfigUri);
-        this.setStatus("configured");
+      return;
+    }
+
+    const create = await vscode.window.showWarningMessage(
+      "No .mcp.json found. Generate MCP config files for Claude Code and GitHub Copilot?",
+      "Generate configs",
+    );
+    if (create) {
+      const bootstrap = new McpServerBootstrap(this.extensionPath);
+      if (!bootstrap.isReady()) {
+        const installed = await bootstrap.install();
+        if (!installed) {
+          vscode.window.showErrorMessage(
+            "Failed to install MCP server dependencies.",
+          );
+          return;
+        }
       }
+      await generateMcpConfigs(workspaceRoot, bootstrap.getServerPath());
+      this.setStatus("configured");
+      await vscode.window.showTextDocument(mcpConfigUri);
     }
   }
 
-  // Legacy compatibility — toggle now opens config
   toggle(): void {
     this.openConfig();
   }
 
   get isRunning(): boolean {
-    // The SDK manages the server; we can only report config presence
     return false;
+  }
+
+  private async fileExists(filePath: string): Promise<boolean> {
+    try {
+      await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private setStatus(state: "configured" | "not-configured"): void {
@@ -109,13 +114,13 @@ export class McpServerManager implements vscode.Disposable {
       case "configured":
         this.statusItem.text = "$(pass-filled) Memory Bank MCP";
         this.statusItem.tooltip =
-          "MCP server configured in .mcp.json — click to view config";
+          "MCP server configured — click to view config";
         this.statusItem.backgroundColor = undefined;
         break;
       case "not-configured":
         this.statusItem.text = "$(circle-slash) Memory Bank MCP";
         this.statusItem.tooltip =
-          "No .mcp.json found — click to configure";
+          "No MCP config found — click to configure";
         this.statusItem.backgroundColor = undefined;
         break;
     }

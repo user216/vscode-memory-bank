@@ -16,6 +16,7 @@ _None_
 - **ADR-0008**: ADR-0008: Auto-commit memory-bank.db via git hooks and extension activation
 - **ADR-0009**: ADR-0009: Extract shared helpers into shared-utils.ts
 - **ADR-0011**: ADR-0011: Use CodeGraphContext as external end-user tool, develop separately
+- **ADR-0012**: ADR-0012: Automate extension setup — zero manual steps after install
 
 ## Deprecated
 
@@ -23,7 +24,7 @@ _None_
 
 ## Superseded
 
-- **ADR-0010**: ADR-0010: Integrate CodeGraphContext as submodule (superseded by ADR-0011)
+_None_
 
 ## Rejected
 

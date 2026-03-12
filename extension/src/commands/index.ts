@@ -1,15 +1,15 @@
 import * as vscode from "vscode";
-import { MemoryBankTreeProvider } from "../sidebar/tree-provider.js";
-import { TasksTreeProvider } from "../sidebar/tasks-provider.js";
-import { DecisionsTreeProvider } from "../sidebar/decisions-provider.js";
-import { MemoryBankStatusBar } from "../statusbar/status-bar.js";
-import { McpServerManager } from "../mcp/server-manager.js";
+import type { MemoryBankTreeProvider } from "../sidebar/tree-provider.js";
+import type { TasksTreeProvider } from "../sidebar/tasks-provider.js";
+import type { DecisionsTreeProvider } from "../sidebar/decisions-provider.js";
+import type { MemoryBankStatusBar } from "../statusbar/status-bar.js";
+import type { McpServerManager } from "../mcp/server-manager.js";
 import { KnowledgeGraphPanel } from "../webview/knowledge-graph.js";
 
 export interface Providers {
-  filesProvider: MemoryBankTreeProvider;
-  tasksProvider: TasksTreeProvider;
-  decisionsProvider: DecisionsTreeProvider;
+  filesProvider: MemoryBankTreeProvider | undefined;
+  tasksProvider: TasksTreeProvider | undefined;
+  decisionsProvider: DecisionsTreeProvider | undefined;
   statusBar: MemoryBankStatusBar | undefined;
   mcpManager: McpServerManager | undefined;
   mbRoot: vscode.Uri;
@@ -19,12 +19,13 @@ export interface Providers {
 export function registerCommands(
   context: vscode.ExtensionContext,
   providers: Providers,
+  onInit: () => Promise<void>,
 ): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("memoryBank.refresh", () => {
-      providers.filesProvider.refresh();
-      providers.tasksProvider.refresh();
-      providers.decisionsProvider.refresh();
+      providers.filesProvider?.refresh();
+      providers.tasksProvider?.refresh();
+      providers.decisionsProvider?.refresh();
       providers.statusBar?.refresh();
     }),
 
@@ -66,12 +67,18 @@ export function registerCommands(
 
       // Create core files
       const coreFiles: Record<string, string> = {
-        "projectbrief.md": "# Project Brief\n\n## Overview\n\n_Describe the project here._\n\n## Goals\n\n- \n\n## Non-Goals\n\n- \n",
-        "productContext.md": "# Product Context\n\n## Why This Project Exists\n\n_Explain the problem being solved._\n\n## Target Users\n\n- \n\n## User Experience\n\n- \n",
-        "systemPatterns.md": "# System Patterns\n\n## Architecture\n\n_Describe the high-level architecture._\n\n## Key Patterns\n\n- \n\n## Component Relationships\n\n- \n",
-        "techContext.md": "# Tech Context\n\n## Tech Stack\n\n- \n\n## Dependencies\n\n- \n\n## Constraints\n\n- \n",
-        "activeContext.md": "# Active Context\n\n## Current Focus\n\n- Project initialization\n\n## Recent Changes\n\n- Initialized Memory Bank\n\n## Next Steps\n\n- Fill in projectbrief.md\n",
-        "progress.md": "# Progress\n\n## What Works\n\n- Memory Bank initialized\n\n## What's Left\n\n- Fill in all core documentation\n\n## Known Issues\n\n- None yet\n",
+        "projectbrief.md":
+          "# Project Brief\n\n## Overview\n\n_Describe the project here._\n\n## Goals\n\n- \n\n## Non-Goals\n\n- \n",
+        "productContext.md":
+          "# Product Context\n\n## Why This Project Exists\n\n_Explain the problem being solved._\n\n## Target Users\n\n- \n\n## User Experience\n\n- \n",
+        "systemPatterns.md":
+          "# System Patterns\n\n## Architecture\n\n_Describe the high-level architecture._\n\n## Key Patterns\n\n- \n\n## Component Relationships\n\n- \n",
+        "techContext.md":
+          "# Tech Context\n\n## Tech Stack\n\n- \n\n## Dependencies\n\n- \n\n## Constraints\n\n- \n",
+        "activeContext.md":
+          "# Active Context\n\n## Current Focus\n\n- Project initialization\n\n## Recent Changes\n\n- Initialized Memory Bank\n\n## Next Steps\n\n- Fill in projectbrief.md\n",
+        "progress.md":
+          "# Progress\n\n## What Works\n\n- Memory Bank initialized\n\n## What's Left\n\n- Fill in all core documentation\n\n## Known Issues\n\n- None yet\n",
       };
 
       for (const [filename, content] of Object.entries(coreFiles)) {
@@ -108,17 +115,26 @@ export function registerCommands(
       );
 
       vscode.window.showInformationMessage(
-        "Memory Bank initialized. Fill in projectbrief.md to get started.",
+        "Memory Bank initialized! Setting up MCP server...",
       );
 
-      // Refresh views
-      providers.filesProvider.refresh();
-      providers.tasksProvider.refresh();
-      providers.decisionsProvider.refresh();
+      // Initialize the full UI (sidebar, status bar, MCP, git hooks) — no reload needed
+      await onInit();
+
+      // Refresh views now that providers are available
+      providers.filesProvider?.refresh();
+      providers.tasksProvider?.refresh();
+      providers.decisionsProvider?.refresh();
       providers.statusBar?.refresh();
     }),
 
     vscode.commands.registerCommand("memoryBank.showGraph", () => {
+      if (!providers.extensionUri || !providers.mbRoot) {
+        vscode.window.showWarningMessage(
+          "Initialize a Memory Bank first.",
+        );
+        return;
+      }
       KnowledgeGraphPanel.createOrShow(
         providers.extensionUri,
         providers.mbRoot,

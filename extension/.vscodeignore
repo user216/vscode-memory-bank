@@ -3,3 +3,6 @@ src/**
 node_modules/**
 tsconfig.json
 *.map
+scripts/**
+*.vsix
+mcp-server/node_modules/**

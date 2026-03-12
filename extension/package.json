@@ -24,7 +24,7 @@
     "documentation"
   ],
   "activationEvents": [
-    "workspaceContains:memory-bank/projectbrief.md"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -40,19 +40,33 @@
     "views": {
       "memory-bank": [
         {
+          "id": "memoryBankWelcome",
+          "name": "Get Started",
+          "when": "!memoryBank.initialized"
+        },
+        {
           "id": "memoryBankFiles",
-          "name": "Files"
+          "name": "Files",
+          "when": "memoryBank.initialized"
         },
         {
           "id": "memoryBankTasks",
-          "name": "Tasks"
+          "name": "Tasks",
+          "when": "memoryBank.initialized"
         },
         {
           "id": "memoryBankDecisions",
-          "name": "Decisions"
+          "name": "Decisions",
+          "when": "memoryBank.initialized"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "memoryBankWelcome",
+        "contents": "No Memory Bank found in this workspace.\n\n[Initialize Memory Bank](command:memoryBank.init)\n\nCreates a memory-bank/ folder with core context files and configures the MCP server automatically."
+      }
+    ],
     "commands": [
       {
         "command": "memoryBank.refresh",
@@ -109,7 +123,11 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run build",
+    "vscode:prepublish": "npm run build:all",
+    "build:all": "npm run build:mcp && npm run build:ext && npm run bundle-mcp",
+    "build:ext": "tsc -p ./",
+    "build:mcp": "cd ../mcp && npm install && npm run build",
+    "bundle-mcp": "node scripts/bundle-mcp.js",
     "build": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src"

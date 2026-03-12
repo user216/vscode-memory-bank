@@ -1,0 +1,30 @@
+{
+  "name": "vscode-memory-bank-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for vscode-memory-bank — structured search, token-budgeted recall, knowledge graph",
+  "type": "module",
+  "bin": {
+    "vscode-memory-bank-mcp": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "files": [
+    "build"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^11.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^4.0.18"
+  },
+  "license": "Apache-2.0"
+}
