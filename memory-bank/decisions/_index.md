@@ -17,6 +17,7 @@ _None_
 - **ADR-0009**: ADR-0009: Extract shared helpers into shared-utils.ts
 - **ADR-0011**: ADR-0011: Use CodeGraphContext as external end-user tool, develop separately
 - **ADR-0012**: ADR-0012: Automate extension setup — zero manual steps after install
+- **ADR-0013**: ADR-0013: Distribute as Copilot Agent Plugin via Git submodule
 
 ## Deprecated
 
