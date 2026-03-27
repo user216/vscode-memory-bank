@@ -161,8 +161,15 @@ export function parseMarkdownFile(filePath, content) {
     const fmUpdated = frontmatterData.updated;
     const createdAt = (fmCreated instanceof Date ? fmCreated.toISOString().slice(0, 10) : fmCreated) || metadata["Added"] || metadata["Date"] || null;
     const updatedAt = (fmUpdated instanceof Date ? fmUpdated.toISOString().slice(0, 10) : fmUpdated) || metadata["Updated"] || metadata["Date"] || null;
-    // Extract status — frontmatter takes precedence
-    const status = frontmatterData.status || metadata["Status"] || null;
+    // Extract status — frontmatter takes precedence, then **Status:**, then ## Status: heading
+    let status = frontmatterData.status || metadata["Status"] || null;
+    if (!status) {
+        // Try ## Status: heading format (e.g. "## Status: Accepted")
+        const headingStatusMatch = bodyContent.match(/^##\s+Status:\s*(.+)$/m);
+        if (headingStatusMatch) {
+            status = headingStatusMatch[1].trim();
+        }
+    }
     return {
         id,
         type,

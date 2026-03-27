@@ -1,32 +1,24 @@
----
-type: core
-title: Active Context
-created: 2026-03-09
-updated: 2026-03-27
-tags: [context, current]
----
 # Active Context
 
 ## Current Focus
-Tester feedback fixes complete. MCP server v2.1.0 (20 tools), Extension v0.4.0 (Notes sidebar), v1 migration tool added.
+Committing all pending changes — extension placeholder fix, MCP server v2.1.0 bundle, ADR-0020, updated changelogs
 
 ## Recent Changes
-- Added 3 new MCP tools: `memory_bulk_update_status`, `memory_add_tag`, `memory_migrate_v1` ([[ADR-0019]])
-- Added Notes sidebar section to extension (`NotesTreeProvider`)
-- Fixed status parsing: 3-tier pattern (YAML → bold → heading) across all layers
-- Added `STATUS_ALIASES` and `resolveStatus()` to shared-utils
-- Updated `memoryBank.init` to v2 flat layout (no subdirectories)
-- Deleted orphaned NOTE-001/002/003.md, SQLite DB, stale .gitattributes
-- Extension v0.4.0, MCP server v2.1.0
+- Fixed 'No view is registered with id: memoryBankNotes' — eager placeholder view registration (ADR-0020)
+- Created building-vscode-agent-plugins skill covering plugin.json schema, MCP bundling, distribution
+- Rewrote copilot-plugin README with deep cross-platform install guide
+- Updated extension CHANGELOG.md for v0.4.0 (3 new MCP tools, placeholder fix, MCP server v2.1.0)
+- Updated ADR-0013 to reflect plugin v0.4.0 (skills-only, no MCP server)
+- Created ADR-0020 for eager placeholder view registration
 
 ## Current Decisions
-- [[ADR-0019]]: Tester Feedback — new tools, sidebar notes, v1 migration (Accepted)
-- [[ADR-0015]]: v2 Architecture (Accepted) — Obsidian-Zettelkasten paradigm
-- [[ADR-0016]]: Eliminate SQLite (Accepted) — MiniSearch + gray-matter
-- [[ADR-0017]]: Remove MCP from plugin (Accepted) — extension delivers MCP exclusively
-- [[ADR-0018]]: Bundle MCP deps in VSIX (Accepted) — .vscodeignore fix, path refresh
+- ADR-0020: Eager placeholder tree view registration to prevent restore errors
+- ADR-0019: Tester feedback — 3 new MCP tools, Notes sidebar, v1 migration
+- ADR-0017: Plugin doesn't bundle MCP server — extension delivers it exclusively
+- ADR-0013: Distribute as Copilot Agent Plugin via Git submodule
 
 ## Next Steps
-1. Real-world testing across different projects ([[TASK-003]])
-2. End-to-end testing of bundled VSIX in clean environment
-3. Fix `chat.pluginLocations` path (should point to `copilot-plugin/` subdir)
+1. Build new VSIX 0.4.0 with placeholder fix and create GitHub release
+2. Test plugin install from clean clone on another machine
+3. Sync building-vscode-agent-plugins skill to other workspaces
+

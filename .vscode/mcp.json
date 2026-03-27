@@ -1,9 +1,18 @@
 {
   "servers": {
+    "memory-bank-vmb-mcp-0-3-1": {
+      "command": "node",
+      "args": [
+        "/home/narayanaya/.vscode/extensions/narayanaya.vscode-memory-bank-0.3.1/mcp-server/build/index.js"
+      ],
+      "env": {
+        "MEMORY_BANK_PATH": "${workspaceFolder}/memory-bank"
+      }
+    },
     "memory-bank": {
       "command": "node",
       "args": [
-        "${workspaceFolder}/mcp/build/index.js"
+        "/home/narayanaya/.vscode/extensions/narayanaya.vscode-memory-bank-0.4.0/mcp-server/build/index.js"
       ],
       "env": {
         "MEMORY_BANK_PATH": "${workspaceFolder}/memory-bank"

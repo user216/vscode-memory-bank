@@ -2,7 +2,7 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getStore, reindexFile } from "../index-store.js";
-import { getMemoryBankPath, slugify, getNextId, updateDecisionIndex, DECISION_STATUSES } from "./shared-utils.js";
+import { getMemoryBankPath, getNextId, DECISION_STATUSES } from "./shared-utils.js";
 export function registerMemoryCreateDecision(server) {
     server.tool("memory_create_decision", "Create a new ADR decision in the memory bank with proper formatting, auto-generated ADR-NNNN ID, and index update. Creates a markdown file in memory-bank/decisions/ and syncs to the in-memory index. Use memory_update_status to change status later.", {
         title: z.string().describe("Decision title — concise summary (e.g. 'Use PostgreSQL for persistence', 'Adopt React Query for data fetching')"),
@@ -31,19 +31,17 @@ export function registerMemoryCreateDecision(server) {
             .describe("List of consequences — both positive and negative (optional). E.g. ['Requires team training on PostgreSQL', 'Better query performance for analytics']"),
     }, async ({ title, context, decision, status, deciders, alternatives, consequences }) => {
         const mbPath = getMemoryBankPath();
-        const decisionsDir = path.join(mbPath, "decisions");
-        if (!fs.existsSync(decisionsDir)) {
-            fs.mkdirSync(decisionsDir, { recursive: true });
-        }
-        const adrId = getNextId(decisionsDir, "ADR-", 4);
-        const slug = slugify(title);
-        const fileName = `${adrId}-${slug}.md`;
-        const filePath = path.join(decisionsDir, fileName);
         const today = new Date().toISOString().slice(0, 10);
-        let md = `# ${adrId}: ${title}\n\n`;
-        md += `**Status:** ${status}\n`;
-        md += `**Date:** ${today}\n`;
-        md += `**Deciders:** ${deciders}\n\n`;
+        // v2 flat layout: files in root, also check legacy decisions/ subdir for ID continuity
+        const adrId = getNextId(mbPath, "ADR-", 4);
+        const fileName = `${adrId}.md`;
+        const filePath = path.join(mbPath, fileName);
+        // v2 format: YAML frontmatter
+        let md = `---\ntype: decision\nstatus: ${status}\ncreated: ${today}\n`;
+        if (deciders)
+            md += `deciders: ${deciders}\n`;
+        md += `---\n`;
+        md += `# ${adrId}: ${title}\n\n`;
         md += `## Context\n${context}\n\n`;
         md += `## Decision\n${decision}\n\n`;
         md += `## Alternatives Considered\n\n`;
@@ -66,7 +64,6 @@ export function registerMemoryCreateDecision(server) {
         }
         md += "\n";
         fs.writeFileSync(filePath, md);
-        updateDecisionIndex(decisionsDir);
         // Sync to in-memory index
         const store = getStore();
         reindexFile(store, filePath);
@@ -74,7 +71,7 @@ export function registerMemoryCreateDecision(server) {
             content: [
                 {
                     type: "text",
-                    text: `Decision created: **${adrId}**: ${title}\nFile: decisions/${fileName}\nStatus: ${status}`,
+                    text: `Decision created: **${adrId}**: ${title}\nFile: ${fileName}\nStatus: ${status}`,
                 },
             ],
         };

@@ -136,6 +136,20 @@ export function activate(context: vscode.ExtensionContext): void {
   providers.mbRoot = mbRoot;
   providers.extensionUri = context.extensionUri;
 
+  // Register empty tree data providers eagerly so VS Code can restore sidebar
+  // views from a previous session without "No view is registered" errors.
+  const emptyProvider: vscode.TreeDataProvider<never> = {
+    getTreeItem: () => new vscode.TreeItem(""),
+    getChildren: () => [],
+  };
+  const placeholderRegistrations = [
+    vscode.window.registerTreeDataProvider("memoryBankFiles", emptyProvider),
+    vscode.window.registerTreeDataProvider("memoryBankTasks", emptyProvider),
+    vscode.window.registerTreeDataProvider("memoryBankDecisions", emptyProvider),
+    vscode.window.registerTreeDataProvider("memoryBankNotes", emptyProvider),
+    vscode.window.registerTreeDataProvider("memoryBankMcpSetup", emptyProvider),
+  ];
+
   // Always register commands (they no-op gracefully when providers aren't ready)
   registerCommands(context, providers, () =>
     initializeFullUI(context, mbRoot, workspaceRoot),
@@ -151,8 +165,10 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   if (mbExists) {
-    // Full UI setup
-    void initializeFullUI(context, mbRoot, workspaceRoot);
+    // Full UI setup (disposes placeholder providers and registers real ones)
+    void initializeFullUI(context, mbRoot, workspaceRoot).then(() => {
+      placeholderRegistrations.forEach((d) => d.dispose());
+    });
   } else {
     // Show one-time notification
     const dismissed = context.globalState.get<boolean>(

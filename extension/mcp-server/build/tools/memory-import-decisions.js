@@ -2,7 +2,7 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getStore, reindexFile } from "../index-store.js";
-import { getMemoryBankPath, slugify, getNextId, updateDecisionIndex, DECISION_STATUSES } from "./shared-utils.js";
+import { getMemoryBankPath, getNextId, DECISION_STATUSES } from "./shared-utils.js";
 function parseFrontMatter(content) {
     const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
     if (!fmMatch) {
@@ -60,6 +60,11 @@ function extractStatus(frontMatter, body) {
     if (statusMatch) {
         return normalizeStatus(statusMatch[1].trim());
     }
+    // 3. Try ## Status: heading
+    const headingMatch = body.match(/^##\s+Status:\s*(.+)$/m);
+    if (headingMatch) {
+        return normalizeStatus(headingMatch[1].trim());
+    }
     return null;
 }
 function normalizeStatus(raw) {
@@ -72,6 +77,10 @@ function normalizeStatus(raw) {
     if (lower === "draft")
         return "Proposed";
     if (lower === "approved")
+        return "Accepted";
+    if (lower === "open")
+        return "Proposed";
+    if (lower === "done")
         return "Accepted";
     return raw; // preserve as-is if unknown
 }
@@ -99,29 +108,41 @@ export function registerMemoryImportDecisions(server) {
             .describe("If true (default), keeps original file content as-is (only prepends ADR header if missing). If false, restructures into standard ADR template with Context/Decision/Alternatives/Consequences sections."),
     }, async ({ source_directory, preserve_content }) => {
         const mbPath = getMemoryBankPath();
-        const decisionsDir = path.join(mbPath, "decisions");
         const store = getStore();
-        if (!fs.existsSync(decisionsDir)) {
-            fs.mkdirSync(decisionsDir, { recursive: true });
-        }
         const results = [];
         if (!source_directory) {
-            // Re-sync mode: read existing decisions and re-index
-            const existingFiles = fs
-                .readdirSync(decisionsDir)
-                .filter((f) => f.match(/^ADR-\d{4}/) && f.endsWith(".md"));
-            for (const f of existingFiles) {
-                const filePath = path.join(decisionsDir, f);
-                reindexFile(store, filePath);
-                const idMatch = f.match(/^(ADR-\d{4})/);
-                results.push(`Synced: ${idMatch ? idMatch[1] : f}`);
+            // Re-sync mode: scan root (v2 flat) and legacy decisions/ subdir (v1)
+            const dirsToScan = [mbPath];
+            const legacyDir = path.join(mbPath, "decisions");
+            if (fs.existsSync(legacyDir))
+                dirsToScan.push(legacyDir);
+            const seenIds = new Map(); // ID → first file path
+            const warnings = [];
+            for (const dir of dirsToScan) {
+                const existingFiles = fs
+                    .readdirSync(dir)
+                    .filter((f) => f.match(/^ADR-\d{4}/) && f.endsWith(".md"));
+                for (const f of existingFiles) {
+                    const filePath = path.join(dir, f);
+                    const idMatch = f.match(/^(ADR-\d{4})/);
+                    const adrId = idMatch ? idMatch[1] : f;
+                    // Detect duplicate IDs
+                    if (seenIds.has(adrId)) {
+                        warnings.push(`⚠ Duplicate ID: ${adrId} found in both ${seenIds.get(adrId)} and ${path.relative(mbPath, filePath)}`);
+                    }
+                    else {
+                        seenIds.set(adrId, path.relative(mbPath, filePath));
+                    }
+                    reindexFile(store, filePath);
+                    results.push(`Synced: ${adrId}`);
+                }
             }
-            updateDecisionIndex(decisionsDir);
+            const warningText = warnings.length > 0 ? `\n\nWarnings:\n${warnings.join("\n")}` : "";
             return {
                 content: [
                     {
                         type: "text",
-                        text: `Re-synced ${results.length} existing decisions to index.\n${results.join("\n")}`,
+                        text: `Re-synced ${results.length} existing decisions to index.\n${results.join("\n")}${warningText}`,
                     },
                 ],
             };
@@ -160,22 +181,21 @@ export function registerMemoryImportDecisions(server) {
             let fileName;
             if (originalNum !== null) {
                 const candidateId = `ADR-${String(originalNum).padStart(4, "0")}`;
-                // Check for ID conflict with existing files
-                const existingFile = fs.readdirSync(decisionsDir).find((f) => f.startsWith(candidateId));
+                // Check for ID conflict with existing files in root
+                const existingFile = fs.readdirSync(mbPath).find((f) => f.startsWith(candidateId));
                 if (existingFile) {
-                    // ID conflict — assign a new one
-                    adrId = getNextId(decisionsDir, "ADR-", 4);
+                    adrId = getNextId(mbPath, "ADR-", 4);
                 }
                 else {
                     adrId = candidateId;
                 }
-                fileName = `${adrId}-${slugify(title)}.md`;
+                fileName = `${adrId}.md`;
             }
             else {
-                adrId = getNextId(decisionsDir, "ADR-", 4);
-                fileName = `${adrId}-${slugify(title)}.md`;
+                adrId = getNextId(mbPath, "ADR-", 4);
+                fileName = `${adrId}.md`;
             }
-            const filePath = path.join(decisionsDir, fileName);
+            const filePath = path.join(mbPath, fileName);
             const today = new Date().toISOString().slice(0, 10);
             let outputContent;
             if (preserve_content) {
@@ -211,7 +231,6 @@ export function registerMemoryImportDecisions(server) {
             reindexFile(store, filePath);
             results.push(`Imported: ${path.basename(sourceFile)} → **${adrId}**: ${title}`);
         }
-        updateDecisionIndex(decisionsDir);
         return {
             content: [
                 {
