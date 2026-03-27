@@ -3,7 +3,7 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getStore, reindexFile } from "../index-store.js";
-import { getMemoryBankPath, slugify, getNextId, updateTaskIndex } from "./shared-utils.js";
+import { getMemoryBankPath, getNextId } from "./shared-utils.js";
 
 export function registerMemoryCreateTask(server: McpServer): void {
   server.tool(
@@ -23,26 +23,20 @@ export function registerMemoryCreateTask(server: McpServer): void {
     },
     async ({ title, request, plan, subtasks }) => {
       const mbPath = getMemoryBankPath();
-      const tasksDir = path.join(mbPath, "tasks");
-
-      if (!fs.existsSync(tasksDir)) {
-        fs.mkdirSync(tasksDir, { recursive: true });
-      }
-
-      const taskId = getNextId(tasksDir, "TASK-", 3);
-      const slug = slugify(title);
-      const fileName = `${taskId}-${slug}.md`;
-      const filePath = path.join(tasksDir, fileName);
       const today = new Date().toISOString().slice(0, 10);
 
-      let md = `# ${taskId}: ${title}\n\n`;
-      md += `**Status:** Pending\n`;
-      md += `**Added:** ${today}\n`;
-      md += `**Updated:** ${today}\n\n`;
-      md += `## Original Request\n${request}\n\n`;
+      // v2 flat layout: files in root, also check legacy tasks/ subdir for ID continuity
+      const taskId = getNextId(mbPath, "TASK-", 3);
+      const fileName = `${taskId}.md`;
+      const filePath = path.join(mbPath, fileName);
+
+      // v2 format: YAML frontmatter
+      let md = `---\ntype: task\nstatus: Pending\ncreated: ${today}\nupdated: ${today}\n---\n`;
+      md += `# ${taskId}: ${title}\n\n`;
+      md += `## Request\n${request}\n\n`;
 
       if (plan && plan.length > 0) {
-        md += `## Implementation Plan\n`;
+        md += `## Plan\n`;
         plan.forEach((step, i) => {
           md += `${i + 1}. ${step}\n`;
         });
@@ -50,11 +44,11 @@ export function registerMemoryCreateTask(server: McpServer): void {
       }
 
       if (subtasks && subtasks.length > 0) {
-        md += `## Progress Tracking\n\n`;
-        md += `| ID | Description | Status | Updated | Notes |\n`;
-        md += `|----|-------------|--------|---------|-------|\n`;
+        md += `## Subtasks\n\n`;
+        md += `| # | Description | Status |\n`;
+        md += `|---|-------------|--------|\n`;
         subtasks.forEach((st, i) => {
-          md += `| ${i + 1}.1 | ${st} | Pending | | |\n`;
+          md += `| ${i + 1} | ${st} | Pending |\n`;
         });
         md += "\n";
       }
@@ -62,7 +56,6 @@ export function registerMemoryCreateTask(server: McpServer): void {
       md += `## Progress Log\n\n### ${today}\nTask created.\n`;
 
       fs.writeFileSync(filePath, md);
-      updateTaskIndex(tasksDir);
 
       // Sync to in-memory index
       const store = getStore();
@@ -72,7 +65,7 @@ export function registerMemoryCreateTask(server: McpServer): void {
         content: [
           {
             type: "text" as const,
-            text: `Task created: **${taskId}**: ${title}\nFile: tasks/${fileName}\nStatus: Pending`,
+            text: `Task created: **${taskId}**: ${title}\nFile: ${fileName}\nStatus: Pending`,
           },
         ],
       };

@@ -3,7 +3,7 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getStore, reindexFile } from "../index-store.js";
-import { getMemoryBankPath, slugify, getNextId, updateDecisionIndex, DECISION_STATUSES } from "./shared-utils.js";
+import { getMemoryBankPath, getNextId, DECISION_STATUSES } from "./shared-utils.js";
 
 interface FrontMatter {
   title?: string;
@@ -114,29 +114,27 @@ export function registerMemoryImportDecisions(server: McpServer): void {
     },
     async ({ source_directory, preserve_content }) => {
       const mbPath = getMemoryBankPath();
-      const decisionsDir = path.join(mbPath, "decisions");
       const store = getStore();
-
-      if (!fs.existsSync(decisionsDir)) {
-        fs.mkdirSync(decisionsDir, { recursive: true });
-      }
-
       const results: string[] = [];
 
       if (!source_directory) {
-        // Re-sync mode: read existing decisions and re-index
-        const existingFiles = fs
-          .readdirSync(decisionsDir)
-          .filter((f) => f.match(/^ADR-\d{4}/) && f.endsWith(".md"));
+        // Re-sync mode: scan root (v2 flat) and legacy decisions/ subdir (v1)
+        const dirsToScan = [mbPath];
+        const legacyDir = path.join(mbPath, "decisions");
+        if (fs.existsSync(legacyDir)) dirsToScan.push(legacyDir);
 
-        for (const f of existingFiles) {
-          const filePath = path.join(decisionsDir, f);
-          reindexFile(store, filePath);
-          const idMatch = f.match(/^(ADR-\d{4})/);
-          results.push(`Synced: ${idMatch ? idMatch[1] : f}`);
+        for (const dir of dirsToScan) {
+          const existingFiles = fs
+            .readdirSync(dir)
+            .filter((f) => f.match(/^ADR-\d{4}/) && f.endsWith(".md"));
+
+          for (const f of existingFiles) {
+            const filePath = path.join(dir, f);
+            reindexFile(store, filePath);
+            const idMatch = f.match(/^(ADR-\d{4})/);
+            results.push(`Synced: ${idMatch ? idMatch[1] : f}`);
+          }
         }
-
-        updateDecisionIndex(decisionsDir);
 
         return {
           content: [
@@ -188,21 +186,20 @@ export function registerMemoryImportDecisions(server: McpServer): void {
 
         if (originalNum !== null) {
           const candidateId = `ADR-${String(originalNum).padStart(4, "0")}`;
-          // Check for ID conflict with existing files
-          const existingFile = fs.readdirSync(decisionsDir).find((f) => f.startsWith(candidateId));
+          // Check for ID conflict with existing files in root
+          const existingFile = fs.readdirSync(mbPath).find((f) => f.startsWith(candidateId));
           if (existingFile) {
-            // ID conflict — assign a new one
-            adrId = getNextId(decisionsDir, "ADR-", 4);
+            adrId = getNextId(mbPath, "ADR-", 4);
           } else {
             adrId = candidateId;
           }
-          fileName = `${adrId}-${slugify(title)}.md`;
+          fileName = `${adrId}.md`;
         } else {
-          adrId = getNextId(decisionsDir, "ADR-", 4);
-          fileName = `${adrId}-${slugify(title)}.md`;
+          adrId = getNextId(mbPath, "ADR-", 4);
+          fileName = `${adrId}.md`;
         }
 
-        const filePath = path.join(decisionsDir, fileName);
+        const filePath = path.join(mbPath, fileName);
         const today = new Date().toISOString().slice(0, 10);
 
         let outputContent: string;
@@ -242,8 +239,6 @@ export function registerMemoryImportDecisions(server: McpServer): void {
         reindexFile(store, filePath);
         results.push(`Imported: ${path.basename(sourceFile)} → **${adrId}**: ${title}`);
       }
-
-      updateDecisionIndex(decisionsDir);
 
       return {
         content: [

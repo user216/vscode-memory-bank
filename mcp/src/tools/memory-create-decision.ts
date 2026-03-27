@@ -3,7 +3,7 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getStore, reindexFile } from "../index-store.js";
-import { getMemoryBankPath, slugify, getNextId, updateDecisionIndex, DECISION_STATUSES } from "./shared-utils.js";
+import { getMemoryBankPath, getNextId, DECISION_STATUSES } from "./shared-utils.js";
 
 export function registerMemoryCreateDecision(server: McpServer): void {
   server.tool(
@@ -39,22 +39,18 @@ export function registerMemoryCreateDecision(server: McpServer): void {
     },
     async ({ title, context, decision, status, deciders, alternatives, consequences }) => {
       const mbPath = getMemoryBankPath();
-      const decisionsDir = path.join(mbPath, "decisions");
-
-      if (!fs.existsSync(decisionsDir)) {
-        fs.mkdirSync(decisionsDir, { recursive: true });
-      }
-
-      const adrId = getNextId(decisionsDir, "ADR-", 4);
-      const slug = slugify(title);
-      const fileName = `${adrId}-${slug}.md`;
-      const filePath = path.join(decisionsDir, fileName);
       const today = new Date().toISOString().slice(0, 10);
 
-      let md = `# ${adrId}: ${title}\n\n`;
-      md += `**Status:** ${status}\n`;
-      md += `**Date:** ${today}\n`;
-      md += `**Deciders:** ${deciders}\n\n`;
+      // v2 flat layout: files in root, also check legacy decisions/ subdir for ID continuity
+      const adrId = getNextId(mbPath, "ADR-", 4);
+      const fileName = `${adrId}.md`;
+      const filePath = path.join(mbPath, fileName);
+
+      // v2 format: YAML frontmatter
+      let md = `---\ntype: decision\nstatus: ${status}\ncreated: ${today}\n`;
+      if (deciders) md += `deciders: ${deciders}\n`;
+      md += `---\n`;
+      md += `# ${adrId}: ${title}\n\n`;
       md += `## Context\n${context}\n\n`;
       md += `## Decision\n${decision}\n\n`;
 
@@ -78,7 +74,6 @@ export function registerMemoryCreateDecision(server: McpServer): void {
       md += "\n";
 
       fs.writeFileSync(filePath, md);
-      updateDecisionIndex(decisionsDir);
 
       // Sync to in-memory index
       const store = getStore();
@@ -88,7 +83,7 @@ export function registerMemoryCreateDecision(server: McpServer): void {
         content: [
           {
             type: "text" as const,
-            text: `Decision created: **${adrId}**: ${title}\nFile: decisions/${fileName}\nStatus: ${status}`,
+            text: `Decision created: **${adrId}**: ${title}\nFile: ${fileName}\nStatus: ${status}`,
           },
         ],
       };
