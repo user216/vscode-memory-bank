@@ -4,6 +4,25 @@ import * as path from "node:path";
 export const TASK_STATUSES = ["Pending", "In Progress", "Completed", "Abandoned"] as const;
 export const DECISION_STATUSES = ["Proposed", "Accepted", "Deprecated", "Superseded", "Rejected"] as const;
 
+/** Common aliases → canonical status values */
+export const STATUS_ALIASES: Record<string, string> = {
+  "Open": "Pending",
+  "open": "Pending",
+  "Todo": "Pending",
+  "todo": "Pending",
+  "Done": "Completed",
+  "done": "Completed",
+  "Draft": "Proposed",
+  "draft": "Proposed",
+  "Approved": "Accepted",
+  "approved": "Accepted",
+};
+
+/** Resolve a status string using aliases. */
+export function resolveStatus(rawStatus: string): string {
+  return STATUS_ALIASES[rawStatus] || rawStatus;
+}
+
 export function getMemoryBankPath(): string {
   return (
     process.env.MEMORY_BANK_PATH ||

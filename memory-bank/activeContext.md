@@ -8,24 +8,23 @@ tags: [context, current]
 # Active Context
 
 ## Current Focus
-Memory Bank v2 migration complete. Extension v0.3.1, MCP server v2.0.0, plugin v0.4.0. Migrated own memory-bank to v2 flat layout.
+Tester feedback fixes complete. MCP server v2.1.0 (20 tools), Extension v0.4.0 (Notes sidebar), v1 migration tool added.
 
 ## Recent Changes
-- Migrated memory-bank to v2 flat layout (no more `tasks/`, `decisions/` subdirectories)
-- Added YAML frontmatter to all core files, tasks, and decisions
-- Config generator fix: always refreshes MCP server path on activation, preserves user env
-- Fixed VSIX missing MCP deps — removed `mcp-server/node_modules/**` from `.vscodeignore` ([[ADR-0018]])
-- Extension v0.3.1: MCP Setup sidebar, no `.mcp.json` generation
-- Copilot plugin v0.4.0: removed bundled MCP server ([[ADR-0017]])
-- MCP server v2.0.0: MiniSearch + gray-matter, zero native deps ([[ADR-0016]])
+- Added 3 new MCP tools: `memory_bulk_update_status`, `memory_add_tag`, `memory_migrate_v1` ([[ADR-0019]])
+- Added Notes sidebar section to extension (`NotesTreeProvider`)
+- Fixed status parsing: 3-tier pattern (YAML → bold → heading) across all layers
+- Added `STATUS_ALIASES` and `resolveStatus()` to shared-utils
+- Updated `memoryBank.init` to v2 flat layout (no subdirectories)
+- Deleted orphaned NOTE-001/002/003.md, SQLite DB, stale .gitattributes
+- Extension v0.4.0, MCP server v2.1.0
 
 ## Current Decisions
+- [[ADR-0019]]: Tester Feedback — new tools, sidebar notes, v1 migration (Accepted)
 - [[ADR-0015]]: v2 Architecture (Accepted) — Obsidian-Zettelkasten paradigm
 - [[ADR-0016]]: Eliminate SQLite (Accepted) — MiniSearch + gray-matter
 - [[ADR-0017]]: Remove MCP from plugin (Accepted) — extension delivers MCP exclusively
 - [[ADR-0018]]: Bundle MCP deps in VSIX (Accepted) — .vscodeignore fix, path refresh
-- [[ADR-0006]]: MCP config .mcp.json (Deprecated) — no longer used
-- [[ADR-0008]]: Auto-commit DB (Deprecated) — no longer applicable
 
 ## Next Steps
 1. Real-world testing across different projects ([[TASK-003]])

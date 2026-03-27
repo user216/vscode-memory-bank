@@ -9,11 +9,9 @@ Project map and navigation for the vscode-memory-bank knowledge base.
 
 ## Project Overview
 - [[projectbrief]] — Goals, non-goals, success criteria
-
-## Key Notes
-- [[NOTE-001]] — Product Context (why, UX, target user)
-- [[NOTE-002]] — System Patterns (architecture, design patterns)
-- [[NOTE-003]] — Tech Context (stack, platform, dependencies)
+- [[productContext]] — Product context (why, UX, target user)
+- [[systemPatterns]] — System patterns (architecture, design patterns)
+- [[techContext]] — Tech context (stack, platform, dependencies)
 
 ## Active Tasks
 - [[TASK-003]] — Real-World Testing Across Projects
@@ -38,6 +36,7 @@ Project map and navigation for the vscode-memory-bank knowledge base.
 - [[ADR-0016]] — Eliminate SQLite — Zero Native Dependencies
 - [[ADR-0017]] — Remove Bundled MCP Server from Copilot Plugin
 - [[ADR-0018]] — Bundle MCP Dependencies in VSIX Package
+- [[ADR-0019]] — Tester Feedback — New MCP Tools, Sidebar Notes, v1 Migration
 
 ## Deprecated/Superseded Decisions
 - [[ADR-0006]] — MCP Config at .mcp.json (Deprecated — SDK no longer uses it)

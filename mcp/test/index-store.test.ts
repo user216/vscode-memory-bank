@@ -45,8 +45,8 @@ describe("IndexStore", () => {
 
   it("initializes store with all markdown files", () => {
     const store = initStore(FIXTURES_PATH);
-    // 6 core + 2 tasks + 1 decision = 9 (excludes _index.md files)
-    expect(store.items.size).toBe(9);
+    // 6 core + 2 tasks + 1 decision + 1 note = 10 (excludes _index.md files)
+    expect(store.items.size).toBe(10);
   });
 
   it("items have correct IDs", () => {

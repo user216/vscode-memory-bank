@@ -1,5 +1,19 @@
 # Changelog — MCP Server
 
+## 2.1.0
+
+### Added
+- **`memory_bulk_update_status`** — batch status updates for up to 50 items, partial success reporting (ADR-0019)
+- **`memory_add_tag`** — add tags to YAML frontmatter, auto-creates frontmatter if missing (ADR-0019)
+- **`memory_migrate_v1`** — detect and migrate v1 subdirectory layout to v2 flat layout with dry-run mode (ADR-0019)
+- **`STATUS_ALIASES`** in `shared-utils.ts` — canonicalizes `Done→Completed`, `Open→Pending`, `Draft→Proposed`, `Approved→Accepted`
+- **`resolveStatus()`** shared helper — imported by `memory_update_status` and `memory_bulk_update_status`
+
+### Fixed
+- **Status parsing consistency** — 3-tier pattern (YAML frontmatter → `**Status:**` bold → `## Status:` heading) applied to all update tools
+- **`memory_recall` description** — now explicitly lists valid parameters (`budget`, `priority`) for better discoverability
+- **`memory_schema` tool list** — updated from 17 to 20 tools
+
 ## 2.0.0
 
 ### Changed

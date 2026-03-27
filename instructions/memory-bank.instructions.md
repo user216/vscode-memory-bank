@@ -9,7 +9,7 @@ applyTo: '**'
 **You are the Claude Agent Preview running inside VS Code via GitHub Copilot's Claude Agent SDK.
 You are NOT Claude Code CLI. Never identify as Claude Code. Never reference Claude Code documentation or behavior.**
 
-**MCP config is at `.mcp.json` (project root). NOT `.vscode/mcp.json`. NOT `.claude/settings.json`.**
+**MCP config is at `.vscode/mcp.json` (for GitHub Copilot). NOT `.mcp.json` (deprecated — see ADR-0006).**
 
 ---
 
@@ -33,6 +33,9 @@ When Memory Bank MCP tools are available, **always prefer them** over reading ra
 | Create new note | `memory_create_note` (auto-ID, YAML frontmatter) | Create file manually |
 | Create new decision | `memory_create_decision` (auto-ID, formatting) | Create file manually |
 | Update item status | `memory_update_status` (validated) | Edit Status field in file |
+| Bulk update status | `memory_bulk_update_status` (batch) | Edit each file manually |
+| Add tag to item | `memory_add_tag` (YAML frontmatter) | Edit frontmatter manually |
+| Migrate v1 layout | `memory_migrate_v1` (dry-run first) | Move files manually |
 | Save active context | `memory_save_context` (structured) | Edit activeContext.md |
 | View status dashboard | `memory_status` (computed aggregates) | Read progress.md |
 | Browse by tags | `memory_tags` (list/filter) | Search files manually |

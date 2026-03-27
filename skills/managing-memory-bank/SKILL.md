@@ -103,7 +103,8 @@ When triggered by user saying "update memory bank" or after significant changes:
 ### Manage Tasks
 **With MCP tools** (preferred):
 - **Create**: `memory_create_task` (auto-generates ID, formats file, updates index)
-- **Update**: `memory_update_status` to change status, add progress log entries
+- **Update**: `memory_update_status` to change status, add progress log entries; `memory_bulk_update_status` for batch changes
+- **Tag**: `memory_add_tag` to add tags to items for categorization
 - **Query**: `memory_query` with `type: "task"` and optional `status` filter
 - **Link**: `memory_link` to connect tasks to related ADRs or other items
 - **Dashboard**: `memory_status` for computed task/decision aggregates
@@ -169,6 +170,9 @@ updated: 2026-03-27
 | Create decision | `memory_create_decision` | Auto-ID, ADR format |
 | Create note | `memory_create_note` | Auto-ID, YAML frontmatter |
 | Update status | `memory_update_status` | Validated status changes |
+| Bulk update status | `memory_bulk_update_status` | Batch status updates (up to 50) |
+| Add tag | `memory_add_tag` | Add tags to YAML frontmatter |
+| Migrate v1 | `memory_migrate_v1` | Migrate v1 subdirs to flat v2 |
 | Update decision | `memory_update_decision` | Modify ADR content |
 | Save context | `memory_save_context` | Structured activeContext update |
 | Link items | `memory_link` | Typed directional relationships |

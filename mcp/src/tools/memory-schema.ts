@@ -61,6 +61,9 @@ export function registerMemorySchema(server: McpServer): void {
           memory_save_context: "Save activeContext.md with structured sections (focus, changes, decisions, next steps)",
           memory_status: "Computed project status: task/decision counts by status, tag cloud",
           memory_tags: "List all tags with item counts, or list items with a specific tag",
+          memory_bulk_update_status: "Update status of multiple tasks/decisions in a single call with partial success reporting",
+          memory_add_tag: "Add a tag to an item's YAML frontmatter (creates frontmatter if missing)",
+          memory_migrate_v1: "Detect and migrate v1 layout (tasks/decisions subdirs) to flat v2 layout (dry_run by default)",
         },
       };
 

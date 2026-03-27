@@ -81,7 +81,13 @@ function extractStatus(content: string): string {
 
   // Fall back to **Status:** pattern
   const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-  return statusMatch?.[1]?.trim() ?? "Unknown";
+  if (statusMatch) return statusMatch[1].trim();
+
+  // Fall back to ## Status: heading pattern
+  const headingMatch = content.match(/^##\s+Status:\s*(.+)$/m);
+  if (headingMatch) return headingMatch[1].trim();
+
+  return "Unknown";
 }
 
 class TaskItem extends vscode.TreeItem {

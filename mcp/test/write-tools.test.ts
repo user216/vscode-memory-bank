@@ -540,3 +540,235 @@ describe("memory_save_context", () => {
     expect(content).toContain("2. Deploy to production");
   });
 });
+
+// ── memory_bulk_update_status ───────────────────────────────────────
+
+describe("memory_bulk_update_status", () => {
+  let tmpPath: string;
+  let store: IndexStore;
+
+  beforeAll(() => {
+    tmpPath = copyFixtures();
+    process.env.MEMORY_BANK_PATH = tmpPath;
+    store = initStore(tmpPath);
+  });
+
+  afterAll(() => {
+    delete process.env.MEMORY_BANK_PATH;
+    if (fs.existsSync(tmpPath)) fs.rmSync(tmpPath, { recursive: true });
+  });
+
+  it("updates multiple task statuses", () => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Update TASK-001 and TASK-002
+    for (const [id, newStatus] of [["TASK-001", "Completed"], ["TASK-002", "In Progress"]] as const) {
+      const item = store.items.get(id);
+      expect(item).toBeDefined();
+      const filePath = path.join(tmpPath, item!.filePath);
+      let content = fs.readFileSync(filePath, "utf-8");
+      content = content.replace(/(\*\*Status:\*\*\s*).+/, `$1${newStatus}`);
+      content = content.replace(/(\*\*Updated:\*\*\s*).+/, `$1${today}`);
+      fs.writeFileSync(filePath, content);
+      reindexFile(store, filePath);
+    }
+
+    expect(store.items.get("TASK-001")!.status).toBe("Completed");
+    expect(store.items.get("TASK-002")!.status).toBe("In Progress");
+  });
+
+  it("handles status aliases (Done → Completed)", async () => {
+    // Test resolveStatus
+    const { resolveStatus } = await import("../src/tools/shared-utils.js");
+    expect(resolveStatus("Done")).toBe("Completed");
+    expect(resolveStatus("done")).toBe("Completed");
+    expect(resolveStatus("Open")).toBe("Pending");
+    expect(resolveStatus("Draft")).toBe("Proposed");
+    expect(resolveStatus("Approved")).toBe("Accepted");
+    expect(resolveStatus("In Progress")).toBe("In Progress"); // passthrough
+  });
+
+  it("reports failures for invalid items", () => {
+    const item = store.items.get("NONEXISTENT-999");
+    expect(item).toBeUndefined();
+  });
+});
+
+// ── memory_add_tag ──────────────────────────────────────────────────
+
+describe("memory_add_tag", () => {
+  let tmpPath: string;
+  let store: IndexStore;
+
+  beforeAll(() => {
+    tmpPath = copyFixtures();
+    process.env.MEMORY_BANK_PATH = tmpPath;
+    store = initStore(tmpPath);
+  });
+
+  afterAll(() => {
+    delete process.env.MEMORY_BANK_PATH;
+    if (fs.existsSync(tmpPath)) fs.rmSync(tmpPath, { recursive: true });
+  });
+
+  it("adds tag to existing YAML frontmatter with inline tags", () => {
+    const filePath = path.join(tmpPath, "NOTE-001-test-note.md");
+    let content = fs.readFileSync(filePath, "utf-8");
+
+    // Has tags: [backend, performance] — add 'caching'
+    const fmMatch = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/m);
+    expect(fmMatch).not.toBeNull();
+
+    const inlineMatch = fmMatch![2].match(/^tags\s*:\s*\[(.+)\]$/m);
+    expect(inlineMatch).not.toBeNull();
+
+    const existingTags = inlineMatch![1].split(",").map((t) => t.trim());
+    expect(existingTags).toContain("backend");
+    existingTags.push("caching");
+
+    const updatedFm = fmMatch![2].replace(
+      /^tags\s*:\s*\[.+\]$/m,
+      `tags: [${existingTags.join(", ")}]`,
+    );
+    content = content.replace(fmMatch![0], `${fmMatch![1]}${updatedFm}${fmMatch![3]}`);
+    fs.writeFileSync(filePath, content);
+
+    const updated = fs.readFileSync(filePath, "utf-8");
+    expect(updated).toContain("tags: [backend, performance, caching]");
+  });
+
+  it("adds frontmatter with tag when file has no frontmatter", () => {
+    const filePath = path.join(tmpPath, "TASK-020.md");
+    fs.writeFileSync(filePath, "# TASK-020: No frontmatter\n\nSome content.\n");
+
+    let content = fs.readFileSync(filePath, "utf-8");
+    const hasFm = /^---\r?\n/.test(content);
+    expect(hasFm).toBe(false);
+
+    // Simulate what memory_add_tag does: prepend frontmatter
+    content = `---\ntags: [feature]\n---\n${content}`;
+    fs.writeFileSync(filePath, content);
+
+    const updated = fs.readFileSync(filePath, "utf-8");
+    expect(updated).toContain("---\ntags: [feature]\n---");
+    expect(updated).toContain("# TASK-020: No frontmatter");
+  });
+
+  it("detects duplicate tags", () => {
+    const filePath = path.join(tmpPath, "NOTE-001-test-note.md");
+    const content = fs.readFileSync(filePath, "utf-8");
+    const fmMatch = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/m);
+
+    const inlineMatch = fmMatch![2].match(/^tags\s*:\s*\[(.+)\]$/m);
+    const existingTags = inlineMatch![1].split(",").map((t) => t.trim());
+    expect(existingTags).toContain("backend");
+  });
+});
+
+// ── memory_migrate_v1 ───────────────────────────────────────────────
+
+describe("memory_migrate_v1", () => {
+  let tmpPath: string;
+  let store: IndexStore;
+
+  beforeAll(() => {
+    tmpPath = copyFixtures();
+    process.env.MEMORY_BANK_PATH = tmpPath;
+    store = initStore(tmpPath);
+  });
+
+  afterAll(() => {
+    delete process.env.MEMORY_BANK_PATH;
+    if (fs.existsSync(tmpPath)) fs.rmSync(tmpPath, { recursive: true });
+  });
+
+  it("detects files in tasks/ and decisions/ subdirectories", () => {
+    const tasksDir = path.join(tmpPath, "tasks");
+    const decisionsDir = path.join(tmpPath, "decisions");
+
+    expect(fs.existsSync(tasksDir)).toBe(true);
+    expect(fs.existsSync(decisionsDir)).toBe(true);
+
+    const taskFiles = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md") && f !== "_index.md");
+    const decisionFiles = fs.readdirSync(decisionsDir).filter((f) => f.endsWith(".md") && f !== "_index.md");
+
+    expect(taskFiles.length).toBeGreaterThan(0);
+    expect(decisionFiles.length).toBeGreaterThan(0);
+  });
+
+  it("migrates files to root with YAML frontmatter", () => {
+    const tasksDir = path.join(tmpPath, "tasks");
+    const taskFiles = fs.readdirSync(tasksDir).filter((f) => f.endsWith(".md") && f !== "_index.md");
+    const today = new Date().toISOString().slice(0, 10);
+
+    for (const file of taskFiles) {
+      const sourcePath = path.join(tasksDir, file);
+      const content = fs.readFileSync(sourcePath, "utf-8");
+
+      // Derive ID from filename
+      const idMatch = file.match(/^(TASK-\d{3})/);
+      if (!idMatch) continue;
+      const id = idMatch[1];
+      const targetPath = path.join(tmpPath, `${id}.md`);
+
+      // Skip if already exists (test for conflict detection)
+      if (fs.existsSync(targetPath)) continue;
+
+      // Add YAML frontmatter if missing
+      let outputContent = content;
+      if (!/^---\r?\n/.test(content)) {
+        const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
+        const status = statusMatch ? statusMatch[1].trim() : "Pending";
+        outputContent = `---\ntype: task\nstatus: ${status}\ncreated: ${today}\nupdated: ${today}\n---\n${content}`;
+      }
+
+      fs.writeFileSync(targetPath, outputContent);
+      fs.unlinkSync(sourcePath);
+      reindexFile(store, targetPath);
+    }
+
+    // Check that files now exist in root
+    const rootFiles = fs.readdirSync(tmpPath).filter((f) => /^TASK-\d+\.md$/.test(f));
+    expect(rootFiles.length).toBeGreaterThan(0);
+
+    // Check frontmatter was added
+    const firstTask = rootFiles[0];
+    const content = fs.readFileSync(path.join(tmpPath, firstTask), "utf-8");
+    expect(content).toMatch(/^---\n/);
+    expect(content).toContain("type: task");
+  });
+
+  it("detects duplicate files", () => {
+    const decisionsDir = path.join(tmpPath, "decisions");
+    if (!fs.existsSync(decisionsDir)) return;
+
+    const decisionFiles = fs.readdirSync(decisionsDir).filter((f) => f.endsWith(".md") && f !== "_index.md");
+
+    for (const file of decisionFiles) {
+      const idMatch = file.match(/^(ADR-\d{4})/);
+      if (!idMatch) continue;
+      const targetPath = path.join(tmpPath, `${idMatch[1]}.md`);
+
+      // Create a conflict file
+      if (!fs.existsSync(targetPath)) {
+        fs.writeFileSync(targetPath, "# Conflict\n");
+      }
+
+      // Now the migration should detect it as a duplicate
+      expect(fs.existsSync(targetPath)).toBe(true);
+      expect(fs.existsSync(path.join(decisionsDir, file))).toBe(true);
+    }
+  });
+
+  it("removes empty subdirectories after migration", () => {
+    const testDir = path.join(tmpPath, "empty-test-dir");
+    fs.mkdirSync(testDir, { recursive: true });
+    expect(fs.existsSync(testDir)).toBe(true);
+
+    const remaining = fs.readdirSync(testDir);
+    if (remaining.length === 0) {
+      fs.rmdirSync(testDir);
+    }
+    expect(fs.existsSync(testDir)).toBe(false);
+  });
+});

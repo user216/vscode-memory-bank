@@ -1,5 +1,18 @@
 # Changelog — VS Code Extension
 
+## 0.4.0
+
+### Added
+- **Notes sidebar section** — new "Notes" view showing `NOTE-*.md` files with tags from YAML frontmatter as description
+- **`memoryBankNotes` tree data provider** — v2-only, no legacy subdir scan
+
+### Fixed
+- **`extractStatus()` in Tasks/Decisions providers** — added `## Status:` heading fallback (3-tier: YAML frontmatter → `**Status:**` bold → `## Status:` heading)
+
+### Changed
+- **`memoryBank.init` v2 flat layout** — no longer creates `tasks/` and `decisions/` subdirectories or `_index.md` files; creates core files with YAML frontmatter
+- **Removed orphaned v1 artifacts** — deleted stale NOTE files, SQLite DB, simplified `.gitignore`
+
 ## 0.3.1
 
 ### Added

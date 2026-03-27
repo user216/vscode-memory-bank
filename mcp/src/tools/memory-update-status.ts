@@ -3,23 +3,9 @@ import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getStore, reindexFile } from "../index-store.js";
-import { getMemoryBankPath, updateDecisionIndex, updateTaskIndex, TASK_STATUSES, DECISION_STATUSES } from "./shared-utils.js";
+import { getMemoryBankPath, updateDecisionIndex, updateTaskIndex, TASK_STATUSES, DECISION_STATUSES, resolveStatus } from "./shared-utils.js";
 
 const ALL_STATUSES = [...TASK_STATUSES, ...DECISION_STATUSES];
-
-// Common aliases → canonical status values
-const STATUS_ALIASES: Record<string, string> = {
-  "Open": "Pending",
-  "open": "Pending",
-  "Todo": "Pending",
-  "todo": "Pending",
-  "Done": "Completed",
-  "done": "Completed",
-  "Draft": "Proposed",
-  "draft": "Proposed",
-  "Approved": "Accepted",
-  "approved": "Accepted",
-};
 
 export function registerMemoryUpdateStatus(server: McpServer): void {
   server.tool(
@@ -46,7 +32,7 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
       const store = getStore();
 
       // Resolve aliases to canonical status
-      const status = STATUS_ALIASES[rawStatus] || rawStatus;
+      const status = resolveStatus(rawStatus);
 
       // Validate status
       if (!ALL_STATUSES.includes(status as any)) {
