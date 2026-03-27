@@ -1,8 +1,14 @@
+---
+type: core
+title: Progress
+created: 2026-03-09
+updated: 2026-03-27
+tags: [progress, status]
+---
 # Progress
 
 ## What's Working
 - GitHub repository: https://github.com/user216/vscode-memory-bank
-- Git submodule linked from 8marta parent project
 - **MCP Server v2.0.0**: Pure TypeScript, zero native dependencies
   - In-memory index: `Map<string, ParsedItem>` + MiniSearch + adjacency lists
   - 17 tools: search, query, recall, link, unlink, update-link, graph, schema, create-task, create-decision, create-note, update-status, update-decision, import-decisions, save-context, status, tags
@@ -11,34 +17,29 @@
   - 99 tests passing across 4 test files
 - **VS Code Extension v0.3.1**: Sidebar (Files/Tasks/Decisions/MCP Setup), status bar, Knowledge Graph webview
   - Zero runtime install — pure JS deps bundled at build time
-  - Dual-layout support: v1 (`tasks/`, `decisions/`) + v2 (flat `TASK-*.md`, `ADR-*.md`)
-  - YAML frontmatter parsing for sidebar status display
-  - MCP Setup sidebar: Copilot auto-configured, Claude Code click-to-copy
-  - Config generator: always refreshes MCP server path on activation, preserves user env
-  - 13 build verification tests (bundling, .vscodeignore, config generator)
-- **Copilot Agent Plugin v0.4.0**: Skills + agents + hooks + prompts only (no bundled MCP — ADR-0017)
-- **Layer 0**: Custom instruction file — MCP-first principle, automatic updates
-- **Layer 1**: Agent skill + templates (projectbrief, task, decision)
-- **Layer 2**: Prompt files
-- **Layer 3**: Custom agents (Memory Planner + Memory Worker)
-- **Layer 4**: Hooks (SessionStart, PreCompact, Stop)
-- **Layer 5**: MCP server (see above)
-- **Layer 6**: VS Code extension (see above)
-- **18 ADRs**: 16 accepted, 2 deprecated (ADR-0006, ADR-0008)
+  - Dual-layout: v1 (`tasks/`, `decisions/`) + v2 (flat `TASK-*.md`, `ADR-*.md`)
+  - Config generator: always refreshes MCP server path, preserves user env
+  - 13 build verification tests
+- **Copilot Plugin v0.4.0**: Skills + agents + hooks + prompts only ([[ADR-0017]])
+- **Custom Instructions**: MCP-first principle, automatic updates
+- **Skills**: managing-memory-bank + building-vscode-agent-plugins
+- **Agents**: Memory Planner + Memory Worker
+- **Hooks**: SessionStart, PreCompact, Stop
+- **18 ADRs**: 16 accepted, 2 deprecated ([[ADR-0006]], [[ADR-0008]])
+- **Memory-bank migrated to v2**: Flat layout, YAML frontmatter, wikilinks
 
 ## What Remains
-- [x] Layer 0-6: All layers built and feature-complete
-- [x] MCP Server v2 migration (ADR-0015 + ADR-0016)
-- [x] Update instruction and skill files for v2 tools
-- [ ] Migrate this project's memory-bank to v2 flat layout
+- [x] All components built and feature-complete
+- [x] MCP Server v2 migration ([[ADR-0015]] + [[ADR-0016]])
+- [x] Migrate this project's memory-bank to v2 flat layout
 - [ ] End-to-end testing of bundled VSIX in clean environment
-- [ ] Real-world testing across different projects
+- [ ] Real-world testing across different projects ([[TASK-003]])
+- [ ] Fix `chat.pluginLocations` path
 
 ## Known Issues
-- Extension needs `npm run build:all` to compile and bundle MCP server before packaging
-- v2 flat layout migration tool not yet implemented (manual migration works)
+- Extension needs `npm run build:all` before packaging
 - `chat.pluginLocations` must point to `copilot-plugin/` subdir, not repo root
 
 ## Overall Status
-Phase: v2 fully implemented, testing
-Completion: ~97%
+Phase: v2 complete, testing
+Completion: ~98%

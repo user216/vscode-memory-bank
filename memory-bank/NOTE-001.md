@@ -1,11 +1,10 @@
 ---
-type: core
-title: Product Context
+type: note
+tags: [product, ux, user-needs]
 created: 2026-03-09
 updated: 2026-03-27
-tags: [product, ux]
 ---
-# Product Context
+# NOTE-001: Product Context
 
 ## Why This Project Exists
 AI coding assistants in VS Code (GitHub Copilot with Claude) lose all working context between sessions and during automatic context compaction. The original memory-bank instruction from github/awesome-copilot solves the basic problem with structured markdown files, but lacks:
@@ -20,13 +19,13 @@ Developer who uses VS Code with GitHub Copilot extension and Claude as the AI mo
 
 ## How It Should Work
 1. **Zero-config start**: Copy the instruction file, start coding. The agent manages memory bank files.
-2. **Progressive enhancement**: Install more components for more automation and capabilities.
+2. **Progressive enhancement**: Install more layers for more automation and capabilities.
 3. **Invisible when working**: Hooks and skills handle context capture/injection automatically.
 4. **Visible when needed**: Slash commands (/memory-update, /memory-review) for explicit interaction.
 5. **Human-readable always**: All state stored as markdown files in the repository.
 
 ## UX Principles
 - Additive-only changes to the original instruction — no breaking changes
-- Each component works independently
+- Each layer works independently if layers above are not installed
 - Memory bank files are git-trackable and human-editable
 - The agent should remember context without the user having to repeat themselves

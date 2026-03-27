@@ -1,46 +1,54 @@
+---
+type: core
+title: System Patterns
+created: 2026-03-09
+updated: 2026-03-27
+tags: [architecture, patterns]
+---
 # System Patterns
 
-## Architecture: Layered Enhancement
-The core architecture is a 7-layer stack where each layer adds capabilities without requiring layers above it. Layer 0 is the foundation (the original memory-bank instruction), and each subsequent layer enhances it.
+## Architecture: Component-Based Enhancement
+The architecture is a set of independent components. Each adds capabilities without requiring the others.
 
 ```
-Layer 6: VS Code Extension (UI, file watchers, events)
-Layer 5: MCP Server (structured queries, search, token budgeting)
-Layer 4: Hooks (automatic lifecycle capture/injection)
-Layer 3: Custom Agents (Plan/Act personas, handoffs)
-Layer 2: Prompt Files (user-invoked workflows)
-Layer 1: Agent Skill (on-demand capability bundle)
-Layer 0: Custom Instructions (always-on conventions) ← original memory-bank instruction
+VS Code Extension  →  MCP Server delivery, sidebar UI, file watchers
+MCP Server         →  Structured queries, search, token budgeting, knowledge graph
+Copilot Plugin     →  Skills + agents + hooks + prompts distribution
+Custom Instructions →  Always-on memory bank conventions (foundation)
 ```
 
 ## Design Patterns
 
 ### Additive Compatibility
-Every enhancement to the original instruction must be additive. The original instruction's 7 core files, 3 workflows (Plan/Act/Task), and task commands (add/update/show) remain unchanged. New features are added as new sections, new files, or new folders.
+Every enhancement to the original instruction must be additive. The original instruction's core files, workflows (Plan/Act/Task), and task commands remain unchanged.
+
+### Obsidian-Zettelkasten Paradigm (v2)
+- **Flat layout**: All items in `memory-bank/` root (no subdirectories)
+- **YAML frontmatter**: `---` delimited metadata (type, status, created, tags)
+- **Wikilinks**: `[[TASK-001]]`, `[[ADR-0015]]` for cross-references
+- **Inline tags**: `#backend`, `#performance` for categorization
+- **Naming**: `TASK-NNN.md`, `ADR-NNNN.md`, `NOTE-NNN.md`
 
 ### Progressive Disclosure
-Following the Agent Skills pattern: Layer 1 only loads its `SKILL.md` frontmatter (name + description) into context. Full instructions load only when the skill is invoked. Resource files load only when referenced. This keeps context window usage minimal.
+Skills only load `SKILL.md` frontmatter into context initially. Full instructions load on invocation. Resource files load only when referenced.
 
 ### Graceful Degradation
-If a higher layer fails or is unavailable:
-- MCP server down → agent falls back to file-based read/write (Layer 0 behavior)
+- MCP server down → agent falls back to file-based read/write
 - Hooks not configured → agent manually follows instruction conventions
 - Skill not installed → instruction file still works standalone
 
-### Memory Bank File Hierarchy (from original instruction)
+### Memory Bank File Layout (v2)
 ```
-projectbrief.md          ← foundation document
-├── productContext.md    ← why, problems, UX goals
-├── systemPatterns.md    ← architecture, design patterns
-├── techContext.md       ← technologies, constraints
-├── activeContext.md     ← current focus, recent changes
-├── progress.md          ← what works, what remains
-├── tasks/               ← task management
-│   ├── _index.md        ← master index by status
-│   └── TASKID-*.md      ← individual task files
-└── decisions/           ← ADRs (new, additive)
-    ├── _index.md        ← decision log by status
-    └── ADR-NNNN-*.md    ← individual decision records
+memory-bank/
+├── projectbrief.md      ← foundation document
+├── productContext.md     ← why, problems, UX goals
+├── systemPatterns.md     ← architecture, design patterns
+├── techContext.md        ← technologies, constraints
+├── activeContext.md      ← current focus, recent changes
+├── progress.md           ← what works, what remains
+├── TASK-NNN.md           ← task files (flat, YAML frontmatter)
+├── ADR-NNNN.md           ← decision records (flat, YAML frontmatter)
+└── NOTE-NNN.md           ← knowledge notes (flat, YAML frontmatter)
 ```
 
 ### Hook Event Mapping
@@ -49,13 +57,12 @@ projectbrief.md          ← foundation document
 | SessionStart | Inject activeContext.md + recent progress |
 | PreCompact | Save activeContext.md snapshot |
 | Stop | Persist session summary to progress.md |
-| PostToolUse (file changes) | Update relevant observations |
 
 ## Component Relationships
-- Instructions (L0) define the conventions all other layers follow
-- Skills (L1) bundle instructions + templates + scripts, loaded on-demand when relevant
-- Prompts (L2) provide user-facing slash commands that invoke skill workflows
-- Agents (L3) are personas that use prompts and skills with all available tools, guided by instructions
-- Hooks (L4) automate what instructions tell the agent to do manually
-- MCP (L5) provides capabilities that file tools cannot (search, token budgeting)
-- Extension (L6) provides UI and editor events that MCP cannot access
+- **Instructions** define conventions all other components follow
+- **Skills** bundle instructions + templates, loaded on-demand
+- **Prompts** provide user-facing slash commands
+- **Agents** are personas that use prompts and skills with all tools
+- **Hooks** automate what instructions tell the agent to do manually
+- **MCP Server** provides search, graph, token budgeting (17 tools)
+- **Extension** delivers MCP server, provides sidebar UI, file watchers
