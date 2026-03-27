@@ -3,7 +3,7 @@ name: managing-memory-bank
 description: >-
   Maintain AI project memory across sessions via structured documentation.
   Use when initializing Memory Bank for new/existing projects, updating
-  memory bank docs (projectbrief, activeContext, progress, tasks, decisions),
+  memory bank docs (projectbrief, tasks, decisions, notes),
   managing task files, creating ADRs, or reviewing context before starting work.
   Also use when the user says "update memory bank".
 argument-hint: describe what you want to do with the memory bank
@@ -30,8 +30,7 @@ The memory bank supports two directory layouts:
 ```
 memory-bank/
 ├── projectbrief.md        ← project overview
-├── activeContext.md        ← current focus, recent changes
-├── progress.md             ← what works, what remains
+├── README.md              ← structure note
 ├── TASK-001.md             ← task files (flat)
 ├── ADR-0001.md             ← decision files (flat)
 ├── NOTE-001.md             ← knowledge notes
@@ -62,11 +61,9 @@ Both layouts are fully supported by the MCP server and VS Code extension.
 ### Initialize Memory Bank
 When a project has no `memory-bank/` folder:
 1. Create `memory-bank/` directory
-2. Create core files: `projectbrief.md`, `activeContext.md`, `progress.md`
+2. Create core files: `projectbrief.md` and `README.md`
 3. Ask user for project brief information
 4. Populate projectbrief.md from user input
-5. Optionally create `productContext.md`, `systemPatterns.md`, `techContext.md` from codebase analysis
-6. Set activeContext.md and progress.md to initial state
 
 Use templates from: [projectbrief template](./templates/projectbrief.md), [task template](./templates/task-template.md), [decision template](./templates/decision-template.md)
 
@@ -81,24 +78,20 @@ Use templates from: [projectbrief template](./templates/projectbrief.md), [task 
 **If MCP tools are not available** (fallback):
 1. Read ALL memory bank files in order:
    - projectbrief.md (foundations)
-   - productContext.md (purpose) — if exists
-   - systemPatterns.md (architecture) — if exists
-   - techContext.md (tech stack) — if exists
-   - activeContext.md (current state)
-   - progress.md (what's done/remaining)
-   - tasks/_index.md or TASK-*.md files
-   - decisions/_index.md or ADR-*.md files
+   - README.md (structure)
+   - TASK-*.md files (active tasks)
+   - ADR-*.md files (decisions)
+   - NOTE-*.md files (notes)
 2. Summarize current state to user
 3. Ask if context is still accurate
 
 ### Update Memory Bank
 When triggered by user saying "update memory bank" or after significant changes:
 1. Use `memory_recall` (if MCP available) or read ALL files to review current state
-2. Update activeContext.md via `memory_save_context` or direct edit
-3. Update progress.md with current status
-4. Update task statuses via `memory_update_status`
-5. Record any decisions via `memory_create_decision`
-6. Use `memory_link` (if MCP available) to connect related items (tasks to ADRs, etc.)
+2. Update task progress via `memory_update_status` with `log_entry`
+3. Record any decisions via `memory_create_decision`
+4. Use `memory_link` (if MCP available) to connect related items (tasks to ADRs, etc.)
+5. Run `memory_verify_decisions` to check ADR compliance
 
 ### Manage Tasks
 **With MCP tools** (preferred):
@@ -112,7 +105,7 @@ When triggered by user saying "update memory bank" or after significant changes:
 **Without MCP** (fallback):
 - **Create**: Create file manually using task template (v1 or v2 format)
 - **Update**: Edit status and progress log directly in file
-- **Query**: Read `_index.md` or scan `TASK-*.md` files
+- **Query**: Scan `TASK-*.md` files
 
 ### Record Decisions
 When an architectural or design decision is made:
@@ -174,7 +167,7 @@ updated: 2026-03-27
 | Add tag | `memory_add_tag` | Add tags to YAML frontmatter |
 | Migrate v1 | `memory_migrate_v1` | Migrate v1 subdirs to flat v2 |
 | Update decision | `memory_update_decision` | Modify ADR content |
-| Save context | `memory_save_context` | Structured activeContext update |
+| Save context | `memory_save_context` | **[DEPRECATED]** — use memory_update_status with log_entry |
 | Link items | `memory_link` | Typed directional relationships |
 | Unlink items | `memory_unlink` | Remove relationships |
 | Update link | `memory_update_link` | Change relation type |
@@ -183,6 +176,7 @@ updated: 2026-03-27
 | Dashboard | `memory_status` | Computed aggregates |
 | Browse tags | `memory_tags` | Tag cloud and filtering |
 | Import ADRs | `memory_import_decisions` | Bulk import from directory |
+| Verify ADRs | `memory_verify_decisions` | Check ADR compliance assertions |
 
 ## Important Rules
 - ALWAYS use Memory Bank MCP tools when available — they are more efficient than raw file reads

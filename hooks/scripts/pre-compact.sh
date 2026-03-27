@@ -1,10 +1,10 @@
 #!/bin/bash
-# Memory Bank — PreCompact Hook
-# Saves a snapshot of activeContext.md before context compaction.
+# Memory Bank — PreCompact Hook (v2)
+# Annotates the most recent in-progress task before context compaction.
 #
 # When the conversation is about to be compacted (context window full),
-# this hook ensures the current active context is preserved to disk
-# so it survives the compaction.
+# this hook ensures the current working state is annotated so it
+# survives the compaction.
 
 set -euo pipefail
 
@@ -26,20 +26,49 @@ if [ ! -d "$MEMORY_BANK" ]; then
   exit 0
 fi
 
-if [ -f "$MEMORY_BANK/activeContext.md" ]; then
-  # Add a compaction marker to the active context
+# Find the most recently modified in-progress TASK-*.md (v2 flat layout)
+LATEST_TASK=""
+LATEST_MTIME=0
+for task_file in "$MEMORY_BANK"/TASK-*.md; do
+  [ -f "$task_file" ] || continue
+  # Check if it's in-progress
+  if head -15 "$task_file" | grep -qi '^status:.*in.progress'; then
+    MTIME=$(stat -c %Y "$task_file" 2>/dev/null || stat -f %m "$task_file" 2>/dev/null || echo 0)
+    if [ "$MTIME" -gt "$LATEST_MTIME" ]; then
+      LATEST_MTIME=$MTIME
+      LATEST_TASK="$task_file"
+    fi
+  fi
+done
+
+# Fall back to v1 tasks/ subdir
+if [ -z "$LATEST_TASK" ] && [ -d "$MEMORY_BANK/tasks" ]; then
+  for task_file in "$MEMORY_BANK"/tasks/*.md; do
+    [ -f "$task_file" ] || continue
+    [ "$(basename "$task_file")" = "_index.md" ] && continue
+    if grep -qi '^\*\*Status:\*\*.*In Progress' "$task_file" 2>/dev/null; then
+      MTIME=$(stat -c %Y "$task_file" 2>/dev/null || stat -f %m "$task_file" 2>/dev/null || echo 0)
+      if [ "$MTIME" -gt "$LATEST_MTIME" ]; then
+        LATEST_MTIME=$MTIME
+        LATEST_TASK="$task_file"
+      fi
+    fi
+  done
+fi
+
+if [ -n "$LATEST_TASK" ]; then
   {
     echo ""
     echo "---"
     echo "_Context compaction occurred at $(date -Iseconds). Above state was preserved by pre-compact hook._"
-  } >> "$MEMORY_BANK/activeContext.md"
+  } >> "$LATEST_TASK"
 fi
 
 # Return a system message so the agent knows compaction happened
 if command -v jq &>/dev/null; then
   jq -n '{
-    "systemMessage": "Memory Bank: activeContext.md has been preserved before compaction. After compaction, re-read memory-bank/activeContext.md to restore context."
+    "systemMessage": "Memory Bank: Context compaction occurred. Use memory_recall to restore project context after compaction."
   }'
 else
-  printf '{"systemMessage":"Memory Bank: activeContext.md has been preserved before compaction. After compaction, re-read memory-bank/activeContext.md to restore context."}\n'
+  printf '{"systemMessage":"Memory Bank: Context compaction occurred. Use memory_recall to restore project context after compaction."}\n'
 fi

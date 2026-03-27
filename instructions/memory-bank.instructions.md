@@ -36,10 +36,11 @@ When Memory Bank MCP tools are available, **always prefer them** over reading ra
 | Bulk update status | `memory_bulk_update_status` (batch) | Edit each file manually |
 | Add tag to item | `memory_add_tag` (YAML frontmatter) | Edit frontmatter manually |
 | Migrate v1 layout | `memory_migrate_v1` (dry-run first) | Move files manually |
-| Save active context | `memory_save_context` (structured) | Edit activeContext.md |
-| View status dashboard | `memory_status` (computed aggregates) | Read progress.md |
+| Save active context | `memory_save_context` | **[DEPRECATED]** Use `memory_update_status` with `log_entry` instead |
+| View status dashboard | `memory_status` (computed aggregates) | Scan files manually |
 | Browse by tags | `memory_tags` (list/filter) | Search files manually |
 | Import decisions | `memory_import_decisions` | Copy files manually |
+| Verify ADR compliance | `memory_verify_decisions` | Check assertions manually |
 
 The MCP tools provide structured, searchable, token-efficient access to the same data stored in the markdown files. MCP write tools handle validation, auto-formatting, and index updates. For other file changes, use Edit/Write tools directly on the markdown files.
 
@@ -52,9 +53,8 @@ The memory bank supports two directory layouts:
 ### v2 Layout (flat — recommended for new projects)
 ```
 memory-bank/
-├── projectbrief.md        ← project overview (the ONE source)
-├── activeContext.md        ← current focus, recent changes
-├── progress.md             ← what works, what remains
+├── projectbrief.md        ← project overview (the ONE required file)
+├── README.md              ← structure note
 ├── TASK-001.md             ← task files (flat)
 ├── ADR-0001.md             ← decision files (flat)
 ├── NOTE-001.md             ← knowledge notes
@@ -106,16 +106,12 @@ updated: 2026-03-27
 
 ### Core Files (Required)
 - **projectbrief.md** — Foundation document that shapes all other files. Defines project scope, goals, non-goals, and success criteria.
-- **activeContext.md** — Current work focus, recent changes, active decisions, next steps.
-- **progress.md** — What works, what remains, known issues, overall status.
+- **README.md** — Structure note describing the memory bank layout.
 
-### Additional Context Files
-- **productContext.md** — Why this project exists, problems it solves, UX goals.
-- **systemPatterns.md** — Architecture, design patterns, component relationships.
-- **techContext.md** — Technologies, dev setup, constraints, dependencies.
-- **tasks/** or flat `TASK-*.md` — Task management.
-- **decisions/** or flat `ADR-*.md` — Architectural Decision Records.
-- **NOTE-*.md** — Atomic knowledge notes (v2).
+### Generated Content (created via MCP tools or manually)
+- **TASK-NNN.md** — Tasks with status lifecycle: Pending → In Progress → Completed / Abandoned
+- **ADR-NNNN.md** — Architectural Decision Records: Proposed → Accepted → Deprecated / Superseded
+- **NOTE-NNN.md** — Atomic knowledge notes with tags (replace v1 monolithic context files).
 
 ## Core Workflows
 
@@ -158,8 +154,8 @@ Create an ADR via `memory_create_decision` or direct file creation whenever:
 - **Update task subtasks** when scope changes during implementation
 
 ### When to Update Context Automatically
-- **Update `activeContext.md`** via `memory_save_context` at the end of each significant work block
-- **Check `memory_status`** to see computed progress dashboard (replaces manual progress.md updates)
+- **Update task progress** via `memory_update_status` with `log_entry` at the end of each significant work block
+- **Check `memory_status`** to see computed progress dashboard
 
 ### General Documentation Updates
 - Discovering new project patterns

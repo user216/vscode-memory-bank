@@ -4,6 +4,32 @@ All notable changes to this project are documented here. Each component (extensi
 
 ## 2026-03-27
 
+### MCP Server v2.2.0 — ADR Compliance Verification (ADR-0021)
+
+#### Added
+- **`memory_verify_decisions` MCP tool** — run compliance assertions embedded in accepted ADR `## Verification` sections against the codebase
+- **`verify-assertions.ts`** — self-contained assertion engine (standalone, no MCP store dependency) supporting `FILE_EXISTS`, `FILE_NOT_EXISTS`, `CONTAINS`, `NOT_CONTAINS` assertion types
+- **`adr-compliance.test.ts`** — vitest suite that verifies all accepted ADR assertions pass against real project codebase
+- **`## Verification` sections** added to 6 accepted ADRs (ADR-0012, ADR-0015, ADR-0016, ADR-0017, ADR-0018, ADR-0020) with HTML comment assertions
+- **ADR-0021** — documents the 3-layer verification system with self-referential assertions
+
+### Extension v0.5.0 — v2 Artifact Updates
+
+#### Changed
+- All hooks (`session-start.sh`, `session-stop.sh`, `pre-compact.sh`) rewritten for v2 flat layout — no longer reference `activeContext.md`, `progress.md`, or `tasks/_index.md`
+- `session-start.sh` now runs ADR assertion checks at session start, printing warnings for failed assertions
+- `instructions/memory-bank.instructions.md` updated to v2: removed v1 file references, added `memory_verify_decisions` tool, deprecated `memory_save_context`
+
+### Copilot Plugin v0.5.0 — v2 Overhaul
+
+#### Changed
+- All hooks, instructions, skills, prompts, and agents updated from v1 to v2
+- Removed all references to `activeContext.md`, `progress.md`, `productContext.md`, `systemPatterns.md`, `techContext.md`, `tasks/_index.md`, `decisions/_index.md`
+- Skills: SKILL.md + templates updated to v2 YAML frontmatter format
+- Prompts: all 4 prompt files reference flat `TASK-*.md`/`ADR-*.md`/`NOTE-*.md` layout
+- Agents: `memory-planner` and `memory-worker` fallback reads updated to v2 file layout
+- Instructions: `memory-bank.instructions.md` rewritten with v2 core files, MCP table, and flat layout diagram
+
 ### MCP Server v2.0.0 — Zero Native Dependencies (ADR-0015, ADR-0016)
 
 **Breaking:** Replaced SQLite (`better-sqlite3`) with pure TypeScript in-memory index using MiniSearch. No native dependencies, no runtime `npm install`.

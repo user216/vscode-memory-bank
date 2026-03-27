@@ -64,6 +64,7 @@ export function registerMemorySchema(server: McpServer): void {
           memory_bulk_update_status: "Update status of multiple tasks/decisions in a single call with partial success reporting",
           memory_add_tag: "Add a tag to an item's YAML frontmatter (creates frontmatter if missing)",
           memory_migrate_v1: "Detect and migrate v1 layout (tasks/decisions subdirs) to flat v2 layout (dry_run by default)",
+          memory_verify_decisions: "Run compliance assertions from ADR ## Verification sections against the codebase",
         },
       };
 
