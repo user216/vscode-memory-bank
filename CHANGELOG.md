@@ -34,14 +34,28 @@ All notable changes to this project are documented here. Each component (extensi
 
 ### Extension v0.3.1
 
+#### Added
+- **MCP Setup sidebar section** — shows "GitHub Copilot" (auto-configured) and "Claude Code / Other" (click to copy config to clipboard)
+- **`memoryBank.copyMcpConfig` command** — copies MCP config JSON snippet to clipboard
+
 #### Changed
 - **Eliminated runtime `npm install`** — all MCP server dependencies are pure JS, bundled at build time
+- **Stopped generating `.mcp.json`** — Claude Agent SDK no longer uses it; only `.vscode/mcp.json` generated for Copilot (ADR-0006 deprecated)
+- **Config generator won't overwrite** — skips writing `.vscode/mcp.json` if `memory-bank` entry already exists
 - `McpServerBootstrap` simplified: removed `install()` method, `isReady()` just checks `index.js` exists
 - `bundle-mcp.js` now runs `npm install --production` at build time to bundle deps into VSIX
 - Sidebar tasks/decisions providers support both v1 (`tasks/`, `decisions/`) and v2 (flat `TASK-*.md`, `ADR-*.md`) layouts
 - Sidebar providers parse YAML frontmatter for status in addition to `**Status:**` pattern
 - Git hook simplified: no-op (no SQLite DB to stage)
 - Init command: simplified `.gitignore` (no DB entries), removed `.gitattributes` creation
+- Server manager: only checks `.vscode/mcp.json` (removed `.mcp.json` references)
+
+### Copilot Plugin v0.4.0 (ADR-0017)
+
+#### Removed
+- Bundled MCP server (`mcp-server-build/`) — now delivered exclusively by the VS Code extension
+- `setup.sh`, `start-mcp.sh`, `.mcp.json` — no longer needed
+- Plugin is now skills + agents + hooks + prompts only
 
 ## 2025-03-09
 

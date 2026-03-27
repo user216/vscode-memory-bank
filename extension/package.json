@@ -2,7 +2,7 @@
   "name": "vscode-memory-bank",
   "displayName": "Memory Bank",
   "description": "Persistent AI project memory across sessions — structured documentation, search, and knowledge graph for GitHub Copilot agents.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "narayanaya",
   "license": "Apache-2.0",
   "repository": {
@@ -58,6 +58,11 @@
           "id": "memoryBankDecisions",
           "name": "Decisions",
           "when": "memoryBank.initialized"
+        },
+        {
+          "id": "memoryBankMcpSetup",
+          "name": "MCP Setup",
+          "when": "memoryBank.initialized"
         }
       ]
     },
@@ -94,6 +99,12 @@
         "command": "memoryBank.toggleMcp",
         "title": "Toggle MCP Server",
         "icon": "$(database)",
+        "category": "Memory Bank"
+      },
+      {
+        "command": "memoryBank.copyMcpConfig",
+        "title": "Copy MCP Config",
+        "icon": "$(copy)",
         "category": "Memory Bank"
       }
     ],

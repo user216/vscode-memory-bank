@@ -7,7 +7,8 @@ import { DecisionsTreeProvider } from "./sidebar/decisions-provider.js";
 import { MemoryBankStatusBar } from "./statusbar/status-bar.js";
 import { McpServerManager } from "./mcp/server-manager.js";
 import { McpServerBootstrap } from "./mcp/server-bootstrap.js";
-import { generateMcpConfigs, updateMcpConfigPaths } from "./mcp/config-generator.js";
+import { generateCopilotMcpConfig } from "./mcp/config-generator.js";
+import { McpSetupProvider } from "./sidebar/mcp-setup-provider.js";
 import { registerCommands, type Providers } from "./commands/index.js";
 import { installGitHook, ensureGitConfig } from "./hooks/install-git-hook.js";
 
@@ -62,8 +63,15 @@ async function initializeFullUI(
   const mcpServerPath = mcpBootstrap.getServerPath();
 
   if (mcpBootstrap.isReady()) {
-    await generateMcpConfigs(workspaceRoot, mcpServerPath);
+    await generateCopilotMcpConfig(workspaceRoot, mcpServerPath);
   }
+
+  // MCP Setup sidebar (copy-paste config for other tools)
+  const memoryBankPath = path.join(workspaceRoot, "memory-bank");
+  const mcpSetupProvider = new McpSetupProvider(mcpServerPath, memoryBankPath);
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("memoryBankMcpSetup", mcpSetupProvider),
+  );
 
   // MCP server manager (status bar indicator)
   mcpManager = new McpServerManager(mbRoot, context.extensionPath);
@@ -138,13 +146,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   if (mbExists) {
     // Full UI setup
-    void initializeFullUI(context, mbRoot, workspaceRoot).then(() => {
-      // After init, ensure MCP config paths match current extension path
-      const mcpBootstrap = new McpServerBootstrap(context.extensionPath);
-      if (mcpBootstrap.isReady()) {
-        void updateMcpConfigPaths(workspaceRoot, mcpBootstrap.getServerPath());
-      }
-    });
+    void initializeFullUI(context, mbRoot, workspaceRoot);
   } else {
     // Show one-time notification
     const dismissed = context.globalState.get<boolean>(

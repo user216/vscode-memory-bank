@@ -4,6 +4,7 @@ import type { TasksTreeProvider } from "../sidebar/tasks-provider.js";
 import type { DecisionsTreeProvider } from "../sidebar/decisions-provider.js";
 import type { MemoryBankStatusBar } from "../statusbar/status-bar.js";
 import type { McpServerManager } from "../mcp/server-manager.js";
+import { buildMcpConfigSnippet } from "../mcp/config-generator.js";
 import { KnowledgeGraphPanel } from "../webview/knowledge-graph.js";
 
 export interface Providers {
@@ -138,5 +139,18 @@ export function registerCommands(
     vscode.commands.registerCommand("memoryBank.toggleMcp", () => {
       providers.mcpManager?.toggle();
     }),
+
+    vscode.commands.registerCommand(
+      "memoryBank.copyMcpConfig",
+      async (mcpServerPath?: string, memoryBankPath?: string) => {
+        const serverPath = mcpServerPath ?? "node_modules/.../mcp-server/build/index.js";
+        const mbPath = memoryBankPath ?? "./memory-bank";
+        const snippet = buildMcpConfigSnippet(serverPath, mbPath);
+        await vscode.env.clipboard.writeText(snippet);
+        vscode.window.showInformationMessage(
+          "MCP config copied to clipboard — paste into your AI tool's MCP settings.",
+        );
+      },
+    ),
   );
 }

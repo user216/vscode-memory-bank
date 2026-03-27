@@ -1,0 +1,53 @@
+---
+type: decision
+status: Accepted
+created: 2026-03-27
+---
+# ADR-0017: Remove Bundled MCP Server from Copilot Plugin
+
+## Context
+
+The Memory Bank project distributes its MCP server through two channels:
+
+1. **VS Code Extension** (`extension/`) — bundles `mcp-server/build/` inside the VSIX, auto-generates `.vscode/mcp.json` on first init
+2. **Copilot Agent Plugin** (`copilot-plugin/`) — bundles a separate copy at `mcp-server-build/`, with `setup.sh` and `start-mcp.sh` scripts, plus its own `.mcp.json`
+
+This means two identical copies of the MCP server are maintained and distributed. After ADR-0016 eliminated native dependencies, the extension's bundled MCP server works everywhere without compilation — removing the original reason the plugin needed its own copy (to handle platform-specific `better-sqlite3` builds independently).
+
+## Decision
+
+Remove the bundled MCP server from the Copilot Agent Plugin. The plugin becomes a **skills + agents + hooks + prompts** package only. MCP server delivery is handled exclusively by the VS Code extension.
+
+**Remove from `copilot-plugin/`:**
+- `mcp-server-build/` — entire directory (redundant with extension bundle)
+- `.mcp.json` — MCP config file (extension auto-generates `.vscode/mcp.json`)
+- `setup.sh` — dependency installer (no deps to install)
+- `start-mcp.sh` — server launcher (extension manages lifecycle)
+
+**Keep in `copilot-plugin/`:**
+- `plugin.json` — manifest (without MCP references)
+- `agents/` — memory-planner, memory-worker agent definitions
+- `skills/` — managing-memory-bank, building-vscode-agent-plugins
+- `hooks/` — session start/stop/pre-compact hooks
+- `instructions/` — global instructions
+- `prompts/` — prompt files
+- `README.md`, `CHANGELOG.md`, `LICENSE`
+
+## Alternatives Considered
+
+### Keep both distribution channels with shared build
+- **Pro:** Plugin works standalone without the extension installed
+- **Con:** Duplicate maintenance, two copies to keep in sync, larger plugin size
+- **Rejected because:** the extension is the primary delivery mechanism; users who install the plugin will also have the extension
+
+### Plugin references extension's MCP server path
+- **Pro:** Single copy, plugin still declares MCP capability
+- **Con:** Fragile — path depends on extension version, breaks on updates
+- **Rejected because:** hardcoded paths to extension install dir are unreliable
+
+## Consequences
+
+- Plugin is smaller and simpler — pure content (skills, agents, hooks, prompts)
+- Single source of truth for MCP server: the VS Code extension
+- Users must install the extension to get MCP tools; the plugin alone provides only skills and agents
+- Plugin no longer needs version-synced MCP server updates

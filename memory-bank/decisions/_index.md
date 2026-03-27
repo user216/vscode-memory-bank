@@ -17,9 +17,11 @@
 - **ADR-0014**: Storage Format Analysis — Markdown vs Database for Memory Bank
 - **ADR-0015**: Memory Bank v2 Architecture — Obsidian-Zettelkasten Paradigm
 - **ADR-0016**: Eliminate SQLite — Zero Native Dependencies
+- **ADR-0017**: Remove Bundled MCP Server from Copilot Plugin
 
 ## Deprecated
 
+- **ADR-0006**: MCP Config Location is .mcp.json — _Claude Agent SDK no longer uses .mcp.json; extension generates .vscode/mcp.json only_
 - **ADR-0008**: Auto-commit memory-bank.db — _no longer applicable (SQLite eliminated in ADR-0016)_
 
 ## Superseded

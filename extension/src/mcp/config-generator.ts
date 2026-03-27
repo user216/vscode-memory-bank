@@ -8,34 +8,25 @@ interface McpServerEntry {
 }
 
 /**
- * Generate both MCP config files with correct absolute paths.
+ * Generate the GitHub Copilot MCP config at `.vscode/mcp.json`.
  *
- * - `.mcp.json` — Claude Code / Claude Agent SDK (absolute paths, "mcpServers" key)
- * - `.vscode/mcp.json` — GitHub Copilot (absolute server path, ${workspaceFolder} for env, "servers" key)
- *
- * Merges with existing configs — only adds/updates the "memory-bank" entry.
+ * Only writes if the "memory-bank" entry does NOT already exist —
+ * never overwrites user-customized configs.
  */
-export async function generateMcpConfigs(
+export async function generateCopilotMcpConfig(
   workspaceRoot: string,
   mcpServerPath: string,
 ): Promise<void> {
-  const memoryBankPath = path.join(workspaceRoot, "memory-bank");
-
-  // Claude Code: .mcp.json (absolute paths for everything)
-  const claudeEntry: McpServerEntry = {
-    command: "node",
-    args: [mcpServerPath],
-    env: { MEMORY_BANK_PATH: memoryBankPath },
-  };
-  writeConfigSafe(
-    path.join(workspaceRoot, ".mcp.json"),
-    "mcpServers",
-    "memory-bank",
-    claudeEntry,
-  );
-
-  // GitHub Copilot: .vscode/mcp.json (${workspaceFolder} for env path)
   const vscodeDir = path.join(workspaceRoot, ".vscode");
+  const configPath = path.join(vscodeDir, "mcp.json");
+
+  // Skip if memory-bank entry already exists
+  const existing = readJsonSafe(configPath);
+  const servers = existing.servers as Record<string, unknown> | undefined;
+  if (servers?.["memory-bank"]) {
+    return;
+  }
+
   if (!fs.existsSync(vscodeDir)) {
     fs.mkdirSync(vscodeDir, { recursive: true });
   }
@@ -44,32 +35,21 @@ export async function generateMcpConfigs(
     args: [mcpServerPath],
     env: { MEMORY_BANK_PATH: "${workspaceFolder}/memory-bank" },
   };
-  writeConfigSafe(
-    path.join(vscodeDir, "mcp.json"),
-    "servers",
-    "memory-bank",
-    copilotEntry,
-  );
+  writeConfigSafe(configPath, "servers", "memory-bank", copilotEntry);
 }
 
 /**
- * Check if existing MCP configs have stale paths (e.g. after extension update)
- * and regenerate if needed.
+ * Build a JSON config snippet for manual MCP setup (Claude Code, etc.)
  */
-export async function updateMcpConfigPaths(
-  workspaceRoot: string,
-  mcpServerPath: string,
-): Promise<void> {
-  const claudeConfig = readJsonSafe(path.join(workspaceRoot, ".mcp.json"));
-  const servers = claudeConfig?.mcpServers as
-    | Record<string, { args?: string[] }>
-    | undefined;
-  const currentArgs = servers?.["memory-bank"]?.args?.[0];
-
-  if (currentArgs && currentArgs !== mcpServerPath) {
-    // Extension path changed (update/reinstall) — regenerate configs
-    await generateMcpConfigs(workspaceRoot, mcpServerPath);
-  }
+export function buildMcpConfigSnippet(mcpServerPath: string, memoryBankPath: string): string {
+  const config = {
+    "memory-bank": {
+      command: "node",
+      args: [mcpServerPath],
+      env: { MEMORY_BANK_PATH: memoryBankPath },
+    },
+  };
+  return JSON.stringify(config, null, 2);
 }
 
 function writeConfigSafe(

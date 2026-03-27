@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
 import { McpServerBootstrap } from "./server-bootstrap.js";
-import { generateMcpConfigs } from "./config-generator.js";
+import { generateCopilotMcpConfig } from "./config-generator.js";
 
 /**
  * MCP status bar indicator.
@@ -36,18 +36,13 @@ export class McpServerManager implements vscode.Disposable {
       return;
     }
 
-    const claudeExists = await this.fileExists(
-      path.join(workspaceRoot, ".mcp.json"),
-    );
     const copilotExists = await this.fileExists(
       path.join(workspaceRoot, ".vscode", "mcp.json"),
     );
 
-    if (claudeExists || copilotExists) {
+    if (copilotExists) {
       this.setStatus("configured");
-      this.outputChannel.appendLine(
-        `MCP config found: ${claudeExists ? ".mcp.json" : ""} ${copilotExists ? ".vscode/mcp.json" : ""}`.trim(),
-      );
+      this.outputChannel.appendLine("MCP config found: .vscode/mcp.json");
     } else {
       this.setStatus("not-configured");
       this.outputChannel.appendLine("No MCP config found.");
@@ -62,18 +57,18 @@ export class McpServerManager implements vscode.Disposable {
       return;
     }
 
-    const mcpConfigUri = vscode.Uri.file(
-      path.join(workspaceRoot, ".mcp.json"),
+    const copilotConfigUri = vscode.Uri.file(
+      path.join(workspaceRoot, ".vscode", "mcp.json"),
     );
 
-    if (await this.fileExists(mcpConfigUri.fsPath)) {
-      await vscode.window.showTextDocument(mcpConfigUri);
+    if (await this.fileExists(copilotConfigUri.fsPath)) {
+      await vscode.window.showTextDocument(copilotConfigUri);
       return;
     }
 
     const create = await vscode.window.showWarningMessage(
-      "No .mcp.json found. Generate MCP config files for Claude Code and GitHub Copilot?",
-      "Generate configs",
+      "No .vscode/mcp.json found. Generate MCP config for GitHub Copilot?",
+      "Generate config",
     );
     if (create) {
       const bootstrap = new McpServerBootstrap(this.extensionPath);
@@ -83,9 +78,9 @@ export class McpServerManager implements vscode.Disposable {
         );
         return;
       }
-      await generateMcpConfigs(workspaceRoot, bootstrap.getServerPath());
+      await generateCopilotMcpConfig(workspaceRoot, bootstrap.getServerPath());
       this.setStatus("configured");
-      await vscode.window.showTextDocument(mcpConfigUri);
+      await vscode.window.showTextDocument(copilotConfigUri);
     }
   }
 
