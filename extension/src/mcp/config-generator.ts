@@ -10,8 +10,10 @@ interface McpServerEntry {
 /**
  * Generate the GitHub Copilot MCP config at `.vscode/mcp.json`.
  *
- * Only writes if the "memory-bank" entry does NOT already exist —
- * never overwrites user-customized configs.
+ * Always ensures the server path points to the currently installed
+ * extension version. This prevents stale paths after extension upgrades
+ * (e.g. .../vscode-memory-bank-0.3.0/... → .../vscode-memory-bank-0.3.1/...).
+ * Preserves any user-customized `env` settings.
  */
 export async function generateCopilotMcpConfig(
   workspaceRoot: string,
@@ -20,22 +22,27 @@ export async function generateCopilotMcpConfig(
   const vscodeDir = path.join(workspaceRoot, ".vscode");
   const configPath = path.join(vscodeDir, "mcp.json");
 
-  // Skip if memory-bank entry already exists
-  const existing = readJsonSafe(configPath);
-  const servers = existing.servers as Record<string, unknown> | undefined;
-  if (servers?.["memory-bank"]) {
-    return;
-  }
-
   if (!fs.existsSync(vscodeDir)) {
     fs.mkdirSync(vscodeDir, { recursive: true });
   }
-  const copilotEntry: McpServerEntry = {
+
+  const existing = readJsonSafe(configPath);
+  if (!existing.servers) {
+    existing.servers = {};
+  }
+  const servers = existing.servers as Record<string, McpServerEntry | undefined>;
+  const current = servers["memory-bank"];
+
+  // Preserve user-customized env, update everything else
+  const env = current?.env ?? { MEMORY_BANK_PATH: "${workspaceFolder}/memory-bank" };
+
+  servers["memory-bank"] = {
     command: "node",
     args: [mcpServerPath],
-    env: { MEMORY_BANK_PATH: "${workspaceFolder}/memory-bank" },
+    env,
   };
-  writeConfigSafe(configPath, "servers", "memory-bank", copilotEntry);
+
+  fs.writeFileSync(configPath, JSON.stringify(existing, null, 2) + "\n");
 }
 
 /**
@@ -50,21 +57,6 @@ export function buildMcpConfigSnippet(mcpServerPath: string, memoryBankPath: str
     },
   };
   return JSON.stringify(config, null, 2);
-}
-
-function writeConfigSafe(
-  filePath: string,
-  rootKey: string,
-  serverName: string,
-  entry: McpServerEntry,
-): void {
-  const existing = readJsonSafe(filePath);
-  if (!existing[rootKey]) {
-    existing[rootKey] = {};
-  }
-  (existing[rootKey] as Record<string, unknown>)[serverName] = entry;
-
-  fs.writeFileSync(filePath, JSON.stringify(existing, null, 2) + "\n");
 }
 
 function readJsonSafe(filePath: string): Record<string, unknown> {
