@@ -273,6 +273,36 @@ Content about #backend and #frontend.`;
     expect(backendCount).toBe(1);
     expect(parsed.tags).toContain("frontend");
   });
+
+  it("parses status from ## Status: heading format", () => {
+    const content = `# ADR-0025: Use Redis\n\n## Status: Accepted\n\n## Context\nNeed caching.`;
+    const parsed = parseMarkdownFile("ADR-0025.md", content);
+
+    expect(parsed.status).toBe("Accepted");
+  });
+
+  it("prefers YAML frontmatter status over ## Status: heading", () => {
+    const content = `---\nstatus: Proposed\n---\n\n# ADR-0026: Something\n\n## Status: Accepted\n\n## Context\nTest.`;
+    const parsed = parseMarkdownFile("ADR-0026.md", content);
+
+    expect(parsed.status).toBe("Proposed");
+  });
+
+  it("prefers **Status:** over ## Status: heading", () => {
+    const content = `# ADR-0027: Something\n\n**Status:** Deprecated\n\n## Status: Accepted\n\n## Context\nTest.`;
+    const parsed = parseMarkdownFile("ADR-0027.md", content);
+
+    expect(parsed.status).toBe("Deprecated");
+  });
+
+  it("parses v2 task with YAML frontmatter status", () => {
+    const content = `---\ntype: task\nstatus: In Progress\ncreated: 2026-03-20\nupdated: 2026-03-27\n---\n\n# TASK-010: Test task\n\n## Request\nDo something.`;
+    const parsed = parseMarkdownFile("TASK-010.md", content);
+
+    expect(parsed.id).toBe("TASK-010");
+    expect(parsed.type).toBe("task");
+    expect(parsed.status).toBe("In Progress");
+  });
 });
 
 describe("isIndexFile", () => {

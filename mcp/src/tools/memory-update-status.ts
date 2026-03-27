@@ -7,6 +7,20 @@ import { getMemoryBankPath, updateDecisionIndex, updateTaskIndex, TASK_STATUSES,
 
 const ALL_STATUSES = [...TASK_STATUSES, ...DECISION_STATUSES];
 
+// Common aliases → canonical status values
+const STATUS_ALIASES: Record<string, string> = {
+  "Open": "Pending",
+  "open": "Pending",
+  "Todo": "Pending",
+  "todo": "Pending",
+  "Done": "Completed",
+  "done": "Completed",
+  "Draft": "Proposed",
+  "draft": "Proposed",
+  "Approved": "Accepted",
+  "approved": "Accepted",
+};
+
 export function registerMemoryUpdateStatus(server: McpServer): void {
   server.tool(
     "memory_update_status",
@@ -27,9 +41,12 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
         .optional()
         .describe("Progress log entry to append with today's date (optional). E.g. 'Completed migration, all tests passing.'"),
     },
-    async ({ id, status, log_entry }) => {
+    async ({ id, status: rawStatus, log_entry }) => {
       const mbPath = getMemoryBankPath();
       const store = getStore();
+
+      // Resolve aliases to canonical status
+      const status = STATUS_ALIASES[rawStatus] || rawStatus;
 
       // Validate status
       if (!ALL_STATUSES.includes(status as any)) {
@@ -101,13 +118,49 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
       let content = fs.readFileSync(filePath, "utf-8");
       const today = new Date().toISOString().slice(0, 10);
 
-      // Update Status field
-      content = content.replace(
-        /(\*\*Status:\*\*\s*).+/,
-        `$1${status}`,
-      );
+      // Update Status field — try YAML frontmatter first, then **Status:**, then ## Status:
+      let statusUpdated = false;
+      const fmMatch = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/m);
+      if (fmMatch) {
+        // Try YAML frontmatter status: field
+        const fmBlock = fmMatch[2];
+        const updatedFmBlock = fmBlock.replace(
+          /^(status\s*:\s*).+$/m,
+          `$1${status}`,
+        );
+        if (updatedFmBlock !== fmBlock) {
+          content = content.replace(fmMatch[0], `${fmMatch[1]}${updatedFmBlock}${fmMatch[3]}`);
+          statusUpdated = true;
+        }
+      }
+      if (!statusUpdated && /\*\*Status:\*\*/.test(content)) {
+        content = content.replace(
+          /(\*\*Status:\*\*\s*).+/,
+          `$1${status}`,
+        );
+        statusUpdated = true;
+      }
+      if (!statusUpdated && /^##\s+Status:/m.test(content)) {
+        content = content.replace(
+          /^(##\s+Status:\s*).+$/m,
+          `$1${status}`,
+        );
+        statusUpdated = true;
+      }
 
-      // Update Updated field
+      // Update Updated field — try YAML frontmatter first, then **Updated:**
+      if (fmMatch) {
+        const fmBlock2 = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/m);
+        if (fmBlock2) {
+          const updatedFm = fmBlock2[2].replace(
+            /^(updated\s*:\s*).+$/m,
+            `$1${today}`,
+          );
+          if (updatedFm !== fmBlock2[2]) {
+            content = content.replace(fmBlock2[0], `${fmBlock2[1]}${updatedFm}${fmBlock2[3]}`);
+          }
+        }
+      }
       content = content.replace(
         /(\*\*Updated:\*\*\s*).+/,
         `$1${today}`,

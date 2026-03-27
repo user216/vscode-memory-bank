@@ -71,6 +71,11 @@ function extractStatus(frontMatter: FrontMatter, body: string): string | null {
   if (statusMatch) {
     return normalizeStatus(statusMatch[1].trim());
   }
+  // 3. Try ## Status: heading
+  const headingMatch = body.match(/^##\s+Status:\s*(.+)$/m);
+  if (headingMatch) {
+    return normalizeStatus(headingMatch[1].trim());
+  }
   return null;
 }
 
@@ -82,6 +87,8 @@ function normalizeStatus(raw: string): string {
   // Map common aliases
   if (lower === "draft") return "Proposed";
   if (lower === "approved") return "Accepted";
+  if (lower === "open") return "Proposed";
+  if (lower === "done") return "Accepted";
   return raw; // preserve as-is if unknown
 }
 
@@ -123,6 +130,9 @@ export function registerMemoryImportDecisions(server: McpServer): void {
         const legacyDir = path.join(mbPath, "decisions");
         if (fs.existsSync(legacyDir)) dirsToScan.push(legacyDir);
 
+        const seenIds = new Map<string, string>(); // ID → first file path
+        const warnings: string[] = [];
+
         for (const dir of dirsToScan) {
           const existingFiles = fs
             .readdirSync(dir)
@@ -130,17 +140,28 @@ export function registerMemoryImportDecisions(server: McpServer): void {
 
           for (const f of existingFiles) {
             const filePath = path.join(dir, f);
-            reindexFile(store, filePath);
             const idMatch = f.match(/^(ADR-\d{4})/);
-            results.push(`Synced: ${idMatch ? idMatch[1] : f}`);
+            const adrId = idMatch ? idMatch[1] : f;
+
+            // Detect duplicate IDs
+            if (seenIds.has(adrId)) {
+              warnings.push(`⚠ Duplicate ID: ${adrId} found in both ${seenIds.get(adrId)} and ${path.relative(mbPath, filePath)}`);
+            } else {
+              seenIds.set(adrId, path.relative(mbPath, filePath));
+            }
+
+            reindexFile(store, filePath);
+            results.push(`Synced: ${adrId}`);
           }
         }
+
+        const warningText = warnings.length > 0 ? `\n\nWarnings:\n${warnings.join("\n")}` : "";
 
         return {
           content: [
             {
               type: "text" as const,
-              text: `Re-synced ${results.length} existing decisions to index.\n${results.join("\n")}`,
+              text: `Re-synced ${results.length} existing decisions to index.\n${results.join("\n")}${warningText}`,
             },
           ],
         };

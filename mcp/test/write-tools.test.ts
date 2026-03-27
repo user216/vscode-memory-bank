@@ -200,6 +200,43 @@ describe("memory_update_status", () => {
     expect(updated).toContain("## Progress Log");
     expect(updated).toContain("Added 15 test cases");
   });
+
+  it("updates status in YAML frontmatter", () => {
+    // Create a v2-style task with YAML frontmatter
+    const taskFile = path.join(tmpPath, "TASK-010.md");
+    const content = `---\ntype: task\nstatus: Pending\ncreated: 2026-03-20\nupdated: 2026-03-20\n---\n\n# TASK-010: Test v2 task\n\n## Request\nTest.\n`;
+    fs.writeFileSync(taskFile, content);
+
+    // Simulate what memory_update_status does: parse frontmatter, replace status
+    let updated = fs.readFileSync(taskFile, "utf-8");
+    const fmMatch = updated.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)/m);
+    expect(fmMatch).not.toBeNull();
+
+    const fmBlock = fmMatch![2];
+    const updatedFmBlock = fmBlock.replace(/^(status\s*:\s*).+$/m, "$1Completed");
+    updated = updated.replace(fmMatch![0], `${fmMatch![1]}${updatedFmBlock}${fmMatch![3]}`);
+    fs.writeFileSync(taskFile, updated);
+
+    reindexFile(store, taskFile);
+    const item = store.items.get("TASK-010");
+    expect(item).toBeDefined();
+    expect(item!.status).toBe("Completed");
+  });
+
+  it("updates status in ## Status: heading format", () => {
+    const taskFile = path.join(tmpPath, "TASK-011.md");
+    const content = `# TASK-011: Heading status task\n\n## Status: Pending\n\n## Request\nTest.\n`;
+    fs.writeFileSync(taskFile, content);
+
+    let updated = fs.readFileSync(taskFile, "utf-8");
+    updated = updated.replace(/^(##\s+Status:\s*).+$/m, "$1Completed");
+    fs.writeFileSync(taskFile, updated);
+
+    reindexFile(store, taskFile);
+    const item = store.items.get("TASK-011");
+    expect(item).toBeDefined();
+    expect(item!.status).toBe("Completed");
+  });
 });
 
 // ── memory_update_decision ──────────────────────────────────────────
