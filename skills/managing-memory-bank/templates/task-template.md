@@ -1,25 +1,22 @@
-# TASKID: {{Task Title}}
+---
+type: task
+status: Pending
+tags: []
+created: {{YYYY-MM-DD}}
+updated: {{YYYY-MM-DD}}
+---
+# TASK-NNN: {{Task Title}}
 
-**Status:** Pending
-**Added:** {{YYYY-MM-DD}}
-**Updated:** {{YYYY-MM-DD}}
-
-## Original Request
+## Request
 {{What the user asked for}}
 
-## Thought Process
-{{Reasoning, analysis, discussion of approach}}
-
-## Implementation Plan
+## Plan
 1. {{Step one}}
 2. {{Step two}}
 3. {{Step three}}
 
-## Progress Tracking
-
-| ID | Description | Status | Updated | Notes |
-|----|-------------|--------|---------|-------|
-| 1.1 | {{Subtask}} | Pending | | |
+## Sub-tasks
+- [ ] {{Subtask description}}
 
 ## Progress Log
 

@@ -27,33 +27,43 @@
 - **AI Models**: Claude Opus (latest) — quality-first, version managed via `memory-bank-config.json`
 - **OS**: Linux (primary), macOS, Windows
 
+## Tech Stack
+
+### MCP Server (v2.0.0)
+- **Runtime**: Node.js 20+
+- **Language**: TypeScript 5.x, compiled with `tsc`
+- **Index**: In-memory `Map<string, ParsedItem>` + MiniSearch (7KB, pure JS)
+- **Frontmatter**: `gray-matter` (30KB, pure JS) — parses YAML `---` delimited metadata
+- **Full-text search**: MiniSearch with BM25 ranking, prefix/fuzzy matching, title boosting
+- **Graph**: Adjacency lists (`outgoing`/`incoming` Maps) for relationship traversal
+- **File watching**: `chokidar` (via `fs.watch`) for incremental index updates
+- **Protocol**: `@modelcontextprotocol/sdk` (stdio transport)
+- **Zero native dependencies** — no `better-sqlite3`, no `node-gyp`, no C/C++ compilation
+
+### VS Code Extension (v0.3.1)
+- **Language**: TypeScript, bundled with `esbuild`
+- **API**: VS Code Extension API
+- **MCP server bundled**: Pure JS deps included at build time (no runtime `npm install`)
+- **Dual-layout support**: v1 subdirectories + v2 flat layout
+- **YAML frontmatter parsing**: Regex-based (no `gray-matter` dep in extension — keeps bundle small)
+
 ## VS Code Customization Primitives Used
 | Primitive | Location | Format |
 |-----------|----------|--------|
-| Custom Instructions | `.github/instructions/` | `.instructions.md` (YAML frontmatter + markdown) |
-| Agent Skills | `.github/skills/` | `SKILL.md` + resource files in folder |
+| Custom Instructions | `instructions/` | `.instructions.md` (YAML frontmatter + markdown) |
+| Agent Skills | `skills/` | `SKILL.md` + resource files in folder |
 | Prompt Files | `.github/prompts/` | `.prompt.md` (YAML frontmatter + markdown) |
 | Custom Agents | `.github/agents/` | `.agent.md` (YAML frontmatter + markdown) |
 | Hooks | `.github/hooks/` | `.json` (hook configuration) |
 | MCP Servers | **`.mcp.json`** (project root) | JSON (MCP server configuration) |
 
-## Key Technologies (planned)
-- **Layers 0-4**: Pure markdown, YAML, JSON, shell scripts — no compiled code
-- **Layer 5 (MCP)**: TypeScript, SQLite + FTS5, optionally local ONNX embeddings
-- **Layer 6 (Extension)**: TypeScript, VS Code Extension API
-
-## Development Tools
-- Git + GitHub (source control, submodules)
-- gh CLI (GitHub operations)
-- Node.js / npm (for MCP server and extension layers)
+## Dependencies
+- Original instruction: [github/awesome-copilot/instructions/memory-bank.instructions.md](https://github.com/github/awesome-copilot/blob/main/instructions/memory-bank.instructions.md)
+- Research sources: 9 existing memory MCP projects (documented in decisions/ADR-0001)
+- CodeGraphContext: [andriispivakelectrodosg/CodeGraphContext](https://github.com/andriispivakelectrodosg/CodeGraphContext) — external end-user MCP tool
 
 ## Constraints
 - Layers 0-4 must have zero external dependencies (no npm install, no Python, no Docker)
 - All memory bank files must be valid markdown
-- Must maintain full compatibility with the original memory-bank.instructions.md
-- Hook scripts must work on Linux, macOS, and Windows (with OS-specific overrides)
-
-## Dependencies
-- Original instruction: [github/awesome-copilot/instructions/memory-bank.instructions.md](https://github.com/github/awesome-copilot/blob/main/instructions/memory-bank.instructions.md)
-- Research sources: 9 existing memory MCP projects (documented in decisions/ADR-0001)
-- CodeGraphContext: [andriispivakelectrodosg/CodeGraphContext](https://github.com/andriispivakelectrodosg/CodeGraphContext) — external end-user MCP tool (developed in separate VS Code profile at /home/narayanaya/CodeGraphContext)
+- Must maintain full compatibility with v1 `**Status:** X` metadata format
+- MCP server must have zero native dependencies (ADR-0016)

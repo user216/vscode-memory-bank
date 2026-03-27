@@ -19,6 +19,10 @@ describe("deriveId", () => {
     expect(deriveId("decisions/ADR-0001-use-sqlite.md")).toBe("ADR-0001");
   });
 
+  it("extracts NOTE ID from filename", () => {
+    expect(deriveId("NOTE-001-api-patterns.md")).toBe("NOTE-001");
+  });
+
   it("uses full stem for core files", () => {
     expect(deriveId("projectbrief.md")).toBe("projectbrief");
     expect(deriveId("activeContext.md")).toBe("activeContext");
@@ -44,6 +48,28 @@ describe("deriveType", () => {
     expect(deriveType("projectbrief.md")).toBe("core");
     expect(deriveType("activeContext.md")).toBe("core");
     expect(deriveType("progress.md")).toBe("core");
+  });
+
+  it('returns type from frontmatter when provided', () => {
+    expect(deriveType("some-file.md", "note")).toBe("note");
+    expect(deriveType("some-file.md", "task")).toBe("task");
+    expect(deriveType("some-file.md", "decision")).toBe("decision");
+  });
+
+  it('returns "note" for NOTE-NNN files in flat layout', () => {
+    expect(deriveType("NOTE-001-api-patterns.md")).toBe("note");
+  });
+
+  it('returns "task" for TASK-NNN files in flat layout', () => {
+    expect(deriveType("TASK-001-build-mcp.md")).toBe("task");
+  });
+
+  it('returns "decision" for ADR-NNNN files in flat layout', () => {
+    expect(deriveType("ADR-0001-use-sqlite.md")).toBe("decision");
+  });
+
+  it('ignores invalid frontmatter type', () => {
+    expect(deriveType("projectbrief.md", "invalid")).toBe("core");
   });
 });
 
@@ -186,6 +212,66 @@ describe("parseMarkdownFile", () => {
     expect(parsed.type).toBe("core");
     expect(parsed.title).toBe("Project Brief");
     expect(parsed.status).toBeNull();
+  });
+
+  it("parses YAML frontmatter", () => {
+    const content = `---
+title: "API Patterns"
+type: note
+tags:
+  - backend
+  - api
+created: 2026-03-15
+updated: 2026-03-20
+related:
+  - ADR-0001
+---
+
+# NOTE-001: API Patterns
+
+Some content about API patterns.`;
+    const parsed = parseMarkdownFile("NOTE-001-api-patterns.md", content);
+
+    expect(parsed.id).toBe("NOTE-001");
+    expect(parsed.type).toBe("note");
+    expect(parsed.tags).toContain("backend");
+    expect(parsed.tags).toContain("api");
+    expect(parsed.related).toContain("ADR-0001");
+    expect(parsed.createdAt).toBe("2026-03-15");
+    expect(parsed.updatedAt).toBe("2026-03-20");
+  });
+
+  it("extracts wikilinks from content", () => {
+    const content = `# Some Note\n\nSee [[ADR-0001]] and [[TASK-001]] for details.`;
+    const parsed = parseMarkdownFile("some-note.md", content);
+
+    expect(parsed.crossRefs).toContain("ADR-0001");
+    expect(parsed.crossRefs).toContain("TASK-001");
+  });
+
+  it("extracts inline tags from content", () => {
+    const content = `# Some Note\n\nThis is about #performance and #caching.`;
+    const parsed = parseMarkdownFile("some-note.md", content);
+
+    expect(parsed.tags).toContain("performance");
+    expect(parsed.tags).toContain("caching");
+  });
+
+  it("deduplicates tags from frontmatter and inline", () => {
+    const content = `---
+tags:
+  - backend
+---
+
+# Note
+
+Content about #backend and #frontend.`;
+    const parsed = parseMarkdownFile("note.md", content);
+
+    // "backend" should appear only once
+    const backendCount = parsed.tags.filter(t => t === "backend").length;
+    expect(backendCount).toBe(1);
+    expect(parsed.tags).toContain("frontend");
   });
 });
 

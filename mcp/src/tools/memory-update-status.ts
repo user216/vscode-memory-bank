@@ -2,8 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getDb } from "../db.js";
-import { syncSingleFile } from "../sync.js";
+import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath, updateDecisionIndex, updateTaskIndex, TASK_STATUSES, DECISION_STATUSES } from "./shared-utils.js";
 
 const ALL_STATUSES = [...TASK_STATUSES, ...DECISION_STATUSES];
@@ -11,7 +10,7 @@ const ALL_STATUSES = [...TASK_STATUSES, ...DECISION_STATUSES];
 export function registerMemoryUpdateStatus(server: McpServer): void {
   server.tool(
     "memory_update_status",
-    "Update the status of a task or decision in the memory bank. Validates status values against item type, updates the markdown file, regenerates the index, and syncs to SQLite. Optionally appends a timestamped progress log entry.",
+    "Update the status of a task or decision in the memory bank. Validates status values against item type, updates the markdown file, regenerates the index, and syncs to the in-memory index. Optionally appends a timestamped progress log entry.",
     {
       id: z
         .string()
@@ -30,7 +29,7 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
     },
     async ({ id, status, log_entry }) => {
       const mbPath = getMemoryBankPath();
-      const db = getDb();
+      const store = getStore();
 
       // Validate status
       if (!ALL_STATUSES.includes(status as any)) {
@@ -44,12 +43,8 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
         };
       }
 
-      // Find the item in the database
-      const item = db
-        .prepare("SELECT id, type, file_path, status FROM items WHERE id = ?")
-        .get(id) as
-        | { id: string; type: string; file_path: string; status: string | null }
-        | undefined;
+      // Find the item in the store
+      const item = store.items.get(id);
 
       if (!item) {
         return {
@@ -91,13 +86,13 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
         };
       }
 
-      const filePath = path.join(mbPath, item.file_path);
+      const filePath = path.join(mbPath, item.filePath);
       if (!fs.existsSync(filePath)) {
         return {
           content: [
             {
               type: "text" as const,
-              text: `File not found: ${item.file_path}. Database may be out of sync.`,
+              text: `File not found: ${item.filePath}. Index may be out of sync.`,
             },
           ],
         };
@@ -134,7 +129,7 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
 
       fs.writeFileSync(filePath, content);
 
-      // Update the index
+      // Update the index file
       const parentDir = path.dirname(filePath);
       if (item.type === "task") {
         updateTaskIndex(parentDir);
@@ -142,8 +137,8 @@ export function registerMemoryUpdateStatus(server: McpServer): void {
         updateDecisionIndex(parentDir);
       }
 
-      // Sync to SQLite
-      syncSingleFile(mbPath, filePath);
+      // Sync to in-memory index
+      reindexFile(store, filePath);
 
       const oldStatus = item.status || "unknown";
       return {

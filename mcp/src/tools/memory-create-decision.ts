@@ -2,13 +2,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { syncSingleFile } from "../sync.js";
+import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath, slugify, getNextId, updateDecisionIndex, DECISION_STATUSES } from "./shared-utils.js";
 
 export function registerMemoryCreateDecision(server: McpServer): void {
   server.tool(
     "memory_create_decision",
-    "Create a new ADR decision in the memory bank with proper formatting, auto-generated ADR-NNNN ID, and index update. Creates a markdown file in memory-bank/decisions/ and syncs to SQLite. Use memory_update_status to change status later.",
+    "Create a new ADR decision in the memory bank with proper formatting, auto-generated ADR-NNNN ID, and index update. Creates a markdown file in memory-bank/decisions/ and syncs to the in-memory index. Use memory_update_status to change status later.",
     {
       title: z.string().describe("Decision title — concise summary (e.g. 'Use PostgreSQL for persistence', 'Adopt React Query for data fetching')"),
       context: z.string().describe("Context section — the problem, situation, or forces prompting this decision. Can be multi-line."),
@@ -80,8 +80,9 @@ export function registerMemoryCreateDecision(server: McpServer): void {
       fs.writeFileSync(filePath, md);
       updateDecisionIndex(decisionsDir);
 
-      // Sync to SQLite
-      syncSingleFile(mbPath, filePath);
+      // Sync to in-memory index
+      const store = getStore();
+      reindexFile(store, filePath);
 
       return {
         content: [

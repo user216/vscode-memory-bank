@@ -61,16 +61,6 @@ async function initializeFullUI(
   const mcpBootstrap = new McpServerBootstrap(context.extensionPath);
   const mcpServerPath = mcpBootstrap.getServerPath();
 
-  if (!mcpBootstrap.isReady()) {
-    const installed = await mcpBootstrap.install();
-    if (!installed) {
-      vscode.window.showWarningMessage(
-        "Memory Bank: Failed to install MCP server dependencies. " +
-          "MCP tools will not be available. Ensure Node.js 20+ is installed.",
-      );
-    }
-  }
-
   if (mcpBootstrap.isReady()) {
     await generateMcpConfigs(workspaceRoot, mcpServerPath);
   }

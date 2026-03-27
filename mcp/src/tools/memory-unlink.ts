@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDb } from "../db.js";
+import { getStore, removeLinkFromStore } from "../index-store.js";
 
 export function registerMemoryUnlink(server: McpServer): void {
   server.tool(
@@ -12,13 +12,11 @@ export function registerMemoryUnlink(server: McpServer): void {
       relation: z.string().describe("Relationship type to delete (e.g. 'implements', 'depends-on'). Must match exactly."),
     },
     async ({ source, target, relation }) => {
-      const db = getDb();
+      const store = getStore();
 
-      const result = db
-        .prepare("DELETE FROM links WHERE source_id = @source AND target_id = @target AND relation = @relation")
-        .run({ source, target, relation });
+      const removed = removeLinkFromStore(store, source, target, relation);
 
-      if (result.changes === 0) {
+      if (!removed) {
         return {
           content: [
             {

@@ -19,33 +19,69 @@ export class DecisionsTreeProvider
   }
 
   async getChildren(): Promise<DecisionItem[]> {
+    const items: DecisionItem[] = [];
+
+    // v1: decisions/ subdirectory
     const decisionsDir = vscode.Uri.joinPath(this.mbRoot, "decisions");
     try {
       const entries = await vscode.workspace.fs.readDirectory(decisionsDir);
-      const items: DecisionItem[] = [];
-
       for (const [name, type] of entries) {
         if (type !== vscode.FileType.File || name === "_index.md" || !name.endsWith(".md")) {
           continue;
         }
-
         const fileUri = vscode.Uri.joinPath(decisionsDir, name);
         const content = Buffer.from(
           await vscode.workspace.fs.readFile(fileUri),
         ).toString("utf-8");
-
-        const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-        const status = statusMatch?.[1]?.trim() ?? "Unknown";
+        const status = extractStatus(content);
         const label = name.replace(".md", "");
-
         items.push(new DecisionItem(label, fileUri, status));
       }
-
-      return items;
     } catch {
-      return [];
+      // decisions/ directory doesn't exist — try flat layout
+    }
+
+    // v2: flat ADR-*.md files in memory-bank root
+    try {
+      const entries = await vscode.workspace.fs.readDirectory(this.mbRoot);
+      for (const [name, type] of entries) {
+        if (type !== vscode.FileType.File || !name.match(/^ADR-\d+.*\.md$/)) {
+          continue;
+        }
+        // Skip if we already found this in decisions/ subdir
+        const label = name.replace(".md", "");
+        if (items.some((i) => i.label === label)) {
+          continue;
+        }
+        const fileUri = vscode.Uri.joinPath(this.mbRoot, name);
+        const content = Buffer.from(
+          await vscode.workspace.fs.readFile(fileUri),
+        ).toString("utf-8");
+        const status = extractStatus(content);
+        items.push(new DecisionItem(label, fileUri, status));
+      }
+    } catch {
+      // ignore
+    }
+
+    return items;
+  }
+}
+
+/** Extract status from YAML frontmatter or **Status:** metadata. */
+function extractStatus(content: string): string {
+  // Try YAML frontmatter first
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (fmMatch) {
+    const statusLine = fmMatch[1].match(/^status\s*:\s*(.+)$/m);
+    if (statusLine) {
+      return statusLine[1].trim().replace(/^["']|["']$/g, "");
     }
   }
+
+  // Fall back to **Status:** pattern
+  const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
+  return statusMatch?.[1]?.trim() ?? "Unknown";
 }
 
 class DecisionItem extends vscode.TreeItem {

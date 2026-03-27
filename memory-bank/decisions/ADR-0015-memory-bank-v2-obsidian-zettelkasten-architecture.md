@@ -1,0 +1,281 @@
+# ADR-0015: Memory Bank v2 Architecture — Obsidian-Zettelkasten Paradigm
+
+**Status:** Accepted
+**Date:** 2026-03-27
+**Deciders:** Project maintainer
+**Supersedes:** Implicit v1 architecture (no formal ADR)
+
+## Context
+
+ADR-0014 analyzed the cascading staleness problem and evaluated storage format alternatives (SQLite, Neo4j, event sourcing, vectors). The conclusion: markdown files remain the source of truth, but the **template design** must be radically simplified to eliminate duplication.
+
+The current v1 architecture suffers from:
+
+1. **7+ files containing the same volatile data** — tool counts, test counts, module counts duplicated across `projectbrief.md`, `productContext.md`, `techContext.md`, `activeContext.md`, `progress.md`, `_index.md`, and `CLAUDE.md`
+2. **No canonical status vocabulary** — tasks use "Pending", "Open", "Complete", "Completed" interchangeably
+3. **Redundant files** — `productContext.md`, `techContext.md`, `systemPatterns.md` overlap heavily with `projectbrief.md`
+4. **Manual index files** — `_index.md` files duplicate titles and descriptions that exist in the source files
+5. **`activeContext.md` as mutable scratchpad** — accumulates stale session state that persists across conversations
+6. **`progress.md` as manually-maintained dashboard** — every metric it contains drifts from reality
+
+Research into the Zettelkasten method (Luhmann, Ahrens) and the Obsidian ecosystem (Dataview, Tasks plugins) revealed proven patterns for organizing knowledge without duplication. See ADR-0014 for the full research.
+
+## Decision
+
+Redesign the memory-bank file format and directory structure following Obsidian-flavored Zettelkasten principles. The key changes:
+
+### 1. File Format: YAML Frontmatter
+
+Every memory-bank file uses YAML frontmatter for structured metadata:
+
+```markdown
+---
+type: task
+status: In Progress
+tags: [authentication, backend]
+related: [ADR-0003, TASK-012]
+created: 2026-03-15
+updated: 2026-03-27
+---
+# TASK-014: Implement OAuth2 login flow
+
+Description and implementation details here...
+
+## Sub-tasks
+- [x] Set up auth middleware
+- [ ] Add login endpoint [priority:: high]
+- [ ] Write integration tests [estimate:: 2h]
+```
+
+**Frontmatter fields:**
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `type` | Yes | `task` \| `decision` \| `note` \| `structure` | Item classification |
+| `status` | For tasks/decisions | TaskStatus \| DecisionStatus | Controlled vocabulary (see below) |
+| `tags` | No | `string[]` | Multi-dimensional categorization |
+| `related` | No | `string[]` | Explicit relationships (supplements wikilinks) |
+| `created` | No | ISO date | Creation date |
+| `updated` | No | ISO date | Last modification date |
+
+**Status vocabularies (enforced):**
+- Tasks: `Pending`, `In Progress`, `Completed`, `Abandoned`
+- Decisions: `Proposed`, `Accepted`, `Deprecated`, `Superseded`, `Rejected`
+
+### 2. Item Types
+
+| Type | ID Pattern | Purpose | Example |
+|------|-----------|---------|---------|
+| `task` | `TASK-NNN` | Actionable work items | `TASK-014.md` |
+| `decision` | `ADR-NNNN` | Architecture decisions | `ADR-0003.md` |
+| `note` | `NOTE-NNN` | Knowledge, patterns, reference | `NOTE-007.md` |
+| `structure` | Free-form | Curated entry points | `README.md`, `architecture.md` |
+
+The `note` type replaces the v1 "core" files (`productContext.md`, `techContext.md`, `systemPatterns.md`). Instead of separate files with overlapping content, atomic notes capture individual concepts and link to each other.
+
+The `structure` type replaces `_index.md` files. Structure notes are curated maps — they contain only links and brief annotations, no duplicated content.
+
+### 3. Directory Structure: Flat
+
+```
+memory-bank/
+├── README.md              ← structure note (project map)
+├── projectbrief.md        ← the ONE source of project overview
+├── TASK-001.md
+├── TASK-002.md
+├── ADR-0001.md
+├── ADR-0002.md
+├── NOTE-001.md            ← replaces productContext.md content
+├── NOTE-002.md            ← replaces techContext.md content
+└── .mcp/                  ← optional tooling artifacts (gitignored)
+```
+
+**Why flat?**
+- No `tasks/` and `decisions/` subdirectories — the `type` frontmatter field handles classification
+- Simpler file operations — no path manipulation needed
+- Wikilinks `[[TASK-001]]` work without path prefixes
+- Aligns with Zettelkasten principle: structure emerges from links, not folders
+
+### 4. Organization: Tags + Wikilinks + Related
+
+Three complementary mechanisms for connecting knowledge:
+
+#### Tags (`#topic`)
+- Defined in frontmatter: `tags: [backend, auth, security]`
+- Multi-dimensional: a task can be tagged `[backend, urgent, sprint-3]`
+- Cheaper than links — don't require a target note to exist
+- Queryable: `memory_query --tag backend` returns all items tagged `backend`
+
+#### Wikilinks (`[[ID]]`)
+- Inline references in note body: "This implements [[ADR-0003]] using [[NOTE-007]]"
+- Parsed by indexer into graph edges (implicit links)
+- Bidirectional: if TASK-014 mentions `[[ADR-0003]]`, the graph shows both directions
+- Compatible with Obsidian — users can browse memory-bank in Obsidian natively
+
+#### Related frontmatter (`related: [ID, ID]`)
+- Explicit graph edges declared in frontmatter
+- Useful when a relationship exists but isn't naturally mentioned in the body text
+- Typed when used with `memory_link` tool (adds relation type like `implements`, `blocks`)
+
+### 5. Current Context: Task-Centric
+
+**v1 problem:** `activeContext.md` was a mutable scratchpad that accumulated stale state across sessions. Every session updated it, but context compaction caused amnesia about what was already written.
+
+**v2 solution:** Eliminate `activeContext.md`. Current context is **derived** from the set of in-progress tasks:
+
+```
+memory_recall → finds all tasks with status: "In Progress"
+             → loads their content + related items
+             → returns within token budget
+```
+
+A session's working state lives in the tasks themselves (sub-task checkboxes, progress logs). When a task completes, it naturally drops out of the "active" context. No separate file to maintain.
+
+**Session start flow:**
+1. `memory_recall(priority: "active")` → loads in-progress tasks + proposed decisions
+2. Agent reads the returned context and understands current state
+3. No need to "update activeContext" — the tasks ARE the context
+
+**Session end flow:**
+1. Update task statuses (`memory_update_status`)
+2. Add progress log entries to tasks
+3. No `memory_save_context` needed — state is already in the task files
+
+### 6. Sub-tasks
+
+Sub-tasks are markdown checkboxes within a task file, optionally with Dataview-style inline fields:
+
+```markdown
+## Sub-tasks
+- [x] Set up auth middleware
+- [ ] Add login endpoint [priority:: high] [assignee:: backend-team]
+- [ ] Write integration tests [estimate:: 2h]
+- [ ] Update API documentation
+```
+
+**Design choices:**
+- **One level deep only** — no nested sub-sub-tasks (complexity not warranted)
+- **Inline fields** — `[key:: value]` syntax for metadata on individual items (Obsidian Tasks compatible)
+- **No separate files for sub-tasks** — they live inside the parent task
+- **`fullyCompleted`** — a task's `status` changes to `Completed` only when all checkboxes are checked
+- **No epics or user stories** — flat task list with `related:` links is sufficient for AI agent workflows. SCRUM ceremony overhead is unnecessary.
+
+### 7. Files Eliminated from v1
+
+| v1 File | Replacement |
+|---------|-------------|
+| `activeContext.md` | Derived from in-progress tasks |
+| `progress.md` | Computed by `memory_status` tool |
+| `productContext.md` | Atomic notes (NOTE-NNN) |
+| `techContext.md` | Atomic notes (NOTE-NNN) |
+| `systemPatterns.md` | Atomic notes (NOTE-NNN) |
+| `tasks/_index.md` | Computed by `memory_query` |
+| `decisions/_index.md` | Computed by `memory_query` |
+
+**Files kept:**
+- `projectbrief.md` — the ONE canonical project overview (no counts, no metrics — just description, goals, constraints)
+- `README.md` — structure note with links to key items (replaces all index files)
+
+### 8. MCP Tools Changes
+
+#### Preserved (behavior unchanged)
+- `memory_recall` — token-budgeted retrieval with priority strategies
+- `memory_query` — structured query by type, status, date
+- `memory_search` — full-text search (implementation changes from FTS5 to MiniSearch, see ADR-0016)
+- `memory_graph` — knowledge graph traversal
+- `memory_link` — create typed relationships
+- `memory_update_status` — change task/decision status
+- `memory_create_task` — create new task
+- `memory_create_decision` — create new ADR
+- `memory_update_decision` — modify ADR content
+- `memory_unlink` — remove relationship
+- `memory_update_link` — change relationship type
+- `memory_schema` — describe data model
+
+#### New tools
+- **`memory_status`** — replaces `progress.md`. Returns computed aggregates:
+  ```
+  Tasks: 3 in progress, 12 completed, 2 pending
+  Decisions: 14 accepted, 2 proposed
+  Notes: 8 total
+  Tags: #backend (7), #auth (4), #frontend (3), ...
+  ```
+- **`memory_tags`** — browse and filter by tag:
+  ```
+  memory_tags() → list all tags with counts
+  memory_tags(tag: "backend") → all items tagged #backend
+  ```
+- **`memory_create_note`** — create atomic knowledge notes (NOTE-NNN type)
+
+#### Modified tools
+- **`memory_save_context`** — deprecated/removed. Context is derived from tasks.
+- **`memory_import_decisions`** — updated to parse YAML frontmatter instead of `**Key:** Value`
+
+### 9. Indexing Architecture
+
+On startup, the MCP server:
+1. Scans all `.md` files in the memory-bank directory
+2. Parses YAML frontmatter + body content
+3. Extracts wikilinks `[[ID]]` and tags `#topic`
+4. Builds in-memory index (see ADR-0016 for details)
+5. Watches for file changes via `fs.watch` for incremental updates
+
+This mirrors Obsidian Dataview's architecture: files are the source of truth, the index is a derived cache rebuilt on startup.
+
+### 10. Migration from v1
+
+A `memory_migrate_v1` tool (or standalone script) handles conversion:
+
+1. **Move task files flat:** `tasks/TASK-001-title.md` → `TASK-001.md`
+2. **Move decision files flat:** `decisions/ADR-0001-title.md` → `ADR-0001.md`
+3. **Add YAML frontmatter:** Parse existing `**Status:** X` metadata into frontmatter
+4. **Convert core files to notes:**
+   - Extract atomic concepts from `productContext.md`, `techContext.md`, `systemPatterns.md`
+   - Create individual NOTE-NNN files for each distinct concept
+   - (Or keep as-is with `type: note` frontmatter for simpler migration)
+5. **Create README.md structure note:** Generate from existing `_index.md` files
+6. **Delete deprecated files:** `activeContext.md`, `progress.md`, all `_index.md` files
+7. **Validate:** Ensure all cross-references resolve, status values are canonical
+
+Migration is **idempotent** — running it twice produces the same result. Already-migrated files are skipped.
+
+## Alternatives Considered
+
+### Keep v1 template with sync script
+Continue using `sync_counts.py` (as in `astro-mcp`) to patch stale counts. Rejected because it treats the symptom (stale numbers) not the disease (duplicated data). The script itself becomes a maintenance burden with hardcoded assumptions.
+
+### Database-first storage
+Fully analyzed in ADR-0014. Rejected due to LLM indexing problem — `.db` files are opaque to file-based AI tools.
+
+### Obsidian plugin approach
+Build memory-bank as an Obsidian plugin, or require Obsidian as a dependency. Rejected because memory-bank must work in any editor/AI tool context. However, the file format is intentionally Obsidian-compatible for users who want it.
+
+## Consequences
+
+### Positive
+- **Zero duplication** — each fact exists in exactly one file
+- **Counts never drift** — computed on demand, not stored
+- **No manual index maintenance** — queries replace index files
+- **Obsidian-compatible** — users can browse memory-bank in Obsidian with full Dataview/Tasks support
+- **Simpler mental model** — "everything is a note with frontmatter"
+- **Context compaction resilient** — task state is in the task file, not a separate scratchpad
+- **Smaller token footprint** — fewer files loaded means more budget for actual content
+
+### Negative
+- **Breaking change** — v1 memory-banks require migration
+- **YAML frontmatter parsing** — adds dependency on a YAML parser (but `gray-matter` is 30KB, zero native deps)
+- **Flat directory visual clutter** — 50+ files in one directory (mitigated by `README.md` structure note)
+- **Learning curve** — users familiar with v1 file layout need to understand the new paradigm
+
+### Neutral
+- Wikilink syntax `[[ID]]` is widely understood but not standard markdown (renders as literal text in GitHub)
+- Tags in frontmatter are standard; inline `#tag` parsing requires convention agreement
+- Migration tooling is a one-time cost
+
+## References
+- ADR-0014: Storage Format Analysis — Markdown vs Database
+- ADR-0016: Eliminate SQLite — Zero Native Dependencies (companion ADR)
+- Obsidian Dataview plugin architecture (github.com/blacksmithgu/obsidian-dataview)
+- Obsidian Tasks plugin (github.com/obsidian-tasks-group/obsidian-tasks)
+- Ahrens, S. "How to Take Smart Notes", 2017 — Zettelkasten note types taxonomy
+- IWE: "Your second brain that AI agents can navigate" (github.com/iwe-org/iwe)

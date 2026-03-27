@@ -1,8 +1,9 @@
-# ADR-{{NNNN}}: {{Title}}
-
-**Status:** Proposed
-**Date:** {{YYYY-MM-DD}}
-**Deciders:** {{who}}
+---
+type: decision
+status: Proposed
+created: {{YYYY-MM-DD}}
+---
+# ADR-NNNN: {{Title}}
 
 ## Context
 {{Why this decision is needed}}

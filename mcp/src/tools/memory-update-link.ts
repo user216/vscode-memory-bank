@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDb } from "../db.js";
+import { getStore, removeLinkFromStore, addLinkToStore } from "../index-store.js";
 
 export function registerMemoryUpdateLink(server: McpServer): void {
   server.tool(
@@ -24,14 +24,11 @@ export function registerMemoryUpdateLink(server: McpServer): void {
         };
       }
 
-      const db = getDb();
+      const store = getStore();
 
-      // Check if target relation already exists (would violate unique constraint)
-      const existing = db
-        .prepare("SELECT 1 FROM links WHERE source_id = @source AND target_id = @target AND relation = @new_relation")
-        .get({ source, target, new_relation });
-
-      if (existing) {
+      // Check if target relation already exists
+      const outLinks = store.outgoing.get(source) || [];
+      if (outLinks.some((l) => l.target === target && l.relation === new_relation)) {
         return {
           content: [
             {
@@ -42,13 +39,10 @@ export function registerMemoryUpdateLink(server: McpServer): void {
         };
       }
 
-      const result = db
-        .prepare(
-          "UPDATE links SET relation = @new_relation WHERE source_id = @source AND target_id = @target AND relation = @old_relation",
-        )
-        .run({ source, target, old_relation, new_relation });
+      // Remove old link
+      const removed = removeLinkFromStore(store, source, target, old_relation);
 
-      if (result.changes === 0) {
+      if (!removed) {
         return {
           content: [
             {
@@ -58,6 +52,9 @@ export function registerMemoryUpdateLink(server: McpServer): void {
           ],
         };
       }
+
+      // Add new link
+      addLinkToStore(store, source, target, new_relation);
 
       return {
         content: [

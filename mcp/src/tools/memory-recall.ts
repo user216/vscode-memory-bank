@@ -1,18 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDb } from "../db.js";
+import { getStore } from "../index-store.js";
+import type { ParsedItem } from "../types.js";
 
 const CHARS_PER_TOKEN = 3.5;
-
-interface ItemRow {
-  id: string;
-  type: string;
-  title: string;
-  content: string;
-  status: string | null;
-  updated_at: string | null;
-  created_at: string | null;
-}
 
 // Priority order for "foundational" strategy
 const FOUNDATIONAL_ORDER = [
@@ -35,11 +26,11 @@ export function registerMemoryRecall(server: McpServer): void {
       ),
     },
     async ({ budget, priority }) => {
-      const db = getDb();
+      const store = getStore();
       const tokenBudget = budget ?? 8000;
       const strategy = priority ?? "active";
 
-      const items = getOrderedItems(db, strategy);
+      const items = getOrderedItems(Array.from(store.items.values()), strategy);
 
       let totalTokens = 0;
       const sections: string[] = [];
@@ -79,12 +70,10 @@ export function registerMemoryRecall(server: McpServer): void {
   );
 }
 
-function getOrderedItems(db: ReturnType<typeof getDb>, strategy: string): ItemRow[] {
+function getOrderedItems(all: ParsedItem[], strategy: string): ParsedItem[] {
   switch (strategy) {
     case "foundational": {
-      const all = db.prepare("SELECT id, type, title, content, status, updated_at, created_at FROM items").all() as ItemRow[];
-      // Sort: core files in FOUNDATIONAL_ORDER first, then tasks, then decisions
-      return all.sort((a, b) => {
+      return [...all].sort((a, b) => {
         const aIdx = FOUNDATIONAL_ORDER.indexOf(a.id);
         const bIdx = FOUNDATIONAL_ORDER.indexOf(b.id);
         if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
@@ -97,29 +86,28 @@ function getOrderedItems(db: ReturnType<typeof getDb>, strategy: string): ItemRo
     }
 
     case "recent": {
-      return db.prepare(
-        "SELECT id, type, title, content, status, updated_at, created_at FROM items ORDER BY COALESCE(updated_at, created_at, synced_at) DESC",
-      ).all() as ItemRow[];
+      return [...all].sort((a, b) => {
+        const aDate = a.updatedAt || a.createdAt || "";
+        const bDate = b.updatedAt || b.createdAt || "";
+        return bDate.localeCompare(aDate);
+      });
     }
 
     case "active":
     default: {
-      const all = db.prepare("SELECT id, type, title, content, status, updated_at, created_at FROM items").all() as ItemRow[];
-      // activeContext first, then in-progress tasks, then recent decisions, then everything else
-      return all.sort((a, b) => {
+      return [...all].sort((a, b) => {
         const aPriority = getActivePriority(a);
         const bPriority = getActivePriority(b);
         if (aPriority !== bPriority) return aPriority - bPriority;
-        // Within same priority, sort by update date
-        const aDate = a.updated_at || a.created_at || "";
-        const bDate = b.updated_at || b.created_at || "";
+        const aDate = a.updatedAt || a.createdAt || "";
+        const bDate = b.updatedAt || b.createdAt || "";
         return bDate.localeCompare(aDate);
       });
     }
   }
 }
 
-function getActivePriority(item: ItemRow): number {
+function getActivePriority(item: ParsedItem): number {
   if (item.id === "activeContext") return 0;
   if (item.id === "progress") return 1;
   if (item.type === "task" && item.status === "In Progress") return 2;

@@ -2,6 +2,47 @@
 
 All notable changes to this project are documented here. Each component (extension, MCP server, layers) has its own section.
 
+## 2026-03-27
+
+### MCP Server v2.0.0 — Zero Native Dependencies (ADR-0015, ADR-0016)
+
+**Breaking:** Replaced SQLite (`better-sqlite3`) with pure TypeScript in-memory index using MiniSearch. No native dependencies, no runtime `npm install`.
+
+#### Added
+- **`index-store.ts`** — In-memory `Map<string, ParsedItem>` + MiniSearch full-text search + adjacency lists for graph
+- **YAML frontmatter parsing** — `gray-matter` parses `---` delimited metadata (v1 `**Key:** Value` still supported)
+- **Wikilink extraction** — `[[TASK-001]]` references parsed into graph edges
+- **Inline tag extraction** — `#topic` tags from body text merged with frontmatter tags
+- **`memory_status` tool** — Computed aggregates: task/decision counts by status, tag cloud, link count
+- **`memory_tags` tool** — List all tags with counts, or filter items by tag
+- **`memory_create_note` tool** — Create NOTE-NNN.md files with YAML frontmatter
+- **99 tests** across 4 test files (parser, index-store, tools, write-tools)
+
+#### Removed
+- `mcp/src/db.ts` — SQLite initialization/schema (replaced by `index-store.ts`)
+- `mcp/src/sync.ts` — Markdown-to-SQLite sync logic (unnecessary with in-memory index)
+- `better-sqlite3` runtime dependency (7.5MB native binary)
+- `@types/better-sqlite3` dev dependency
+
+#### Changed
+- All 14 tool files updated: SQL queries → Map/array operations
+- `memory_search` uses MiniSearch + `generateExcerpt()` (replaces FTS5 `MATCH`/`snippet()`)
+- `memory_query` uses `Array.from(store.items.values()).filter()` (replaces SQL `WHERE`)
+- `memory_graph` BFS traversal over adjacency lists (replaces SQL BFS)
+- `parser.ts` supports both YAML frontmatter and v1 `**Key:** Value` metadata
+- `deriveType()` supports flat layout patterns (`TASK-NNN`, `ADR-NNNN`, `NOTE-NNN`)
+
+### Extension v0.3.1
+
+#### Changed
+- **Eliminated runtime `npm install`** — all MCP server dependencies are pure JS, bundled at build time
+- `McpServerBootstrap` simplified: removed `install()` method, `isReady()` just checks `index.js` exists
+- `bundle-mcp.js` now runs `npm install --production` at build time to bundle deps into VSIX
+- Sidebar tasks/decisions providers support both v1 (`tasks/`, `decisions/`) and v2 (flat `TASK-*.md`, `ADR-*.md`) layouts
+- Sidebar providers parse YAML frontmatter for status in addition to `**Status:**` pattern
+- Git hook simplified: no-op (no SQLite DB to stage)
+- Init command: simplified `.gitignore` (no DB entries), removed `.gitattributes` creation
+
 ## 2025-03-09
 
 ### Extension v0.2.0

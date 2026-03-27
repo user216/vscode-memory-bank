@@ -3,42 +3,38 @@
 ## What's Working
 - GitHub repository: https://github.com/user216/vscode-memory-bank
 - Git submodule linked from 8marta parent project
-- **Dead code analysis**: CGC-powered reports (dead-code-report.md, dead-code-review-verdict.md) identifying real dead code vs false positives
-- **MCP config**: .mcp.json at project root with memory-bank MCP server + CodeGraphContext MCP server (CGC as external end-user tool at /home/narayanaya/CodeGraphContext)
-- **Layer 0**: Custom instruction file (`instructions/memory-bank.instructions.md`) — additive extension of original
-- **Layer 1**: Agent skill (`skills/managing-memory-bank/SKILL.md`) + templates (projectbrief, task, decision)
-- **Layer 2**: Prompt files — `/memory-init`, `/memory-update`, `/memory-review`, `/memory-task`
-- **Layer 3**: Custom agents — Memory Planner (plan mode, read-only tools) + Memory Worker (act mode) with handoffs
-- **Layer 4**: Hooks — SessionStart (inject context), PreCompact (preserve context), Stop (ensure save) — all `jq`-optional
-- **Layer 5**: MCP server (`mcp/`) — TypeScript, SQLite + FTS5, 9 tools (search, query, recall, link, graph, schema, create_task, update_status, save_context), 65 tests all passing
-- **Layer 6**: VS Code extension v0.2.1 (`extension/`) — sidebar (Files/Tasks/Decisions tree views), status bar, commands, file watcher, Knowledge Graph webview, informational MCP status bar (shows .mcp.json config status), builds cleanly
-- **Documentation**: Architecture overview + individual layer docs (all 7 layers documented)
-- **ADRs**: 6 accepted decisions (compatibility, architecture, no-PRD, no-model-pinning, agent-identity, mcp-config-location)
-- **Model management**: `memory-bank-config.json` + `scripts/update-model.sh` (add/update/remove model pinning)
-- **README.md**: Repository documentation with quick start, architecture overview, install instructions
-- **Plugin compliance**: Copilot plugin manifests (`.github/plugin/`, `.claude-plugin/`), MCP config (`.mcp.json` at project root), community files (`CONTRIBUTING.md`, `SECURITY.md`)
-- **Automatic memory bank updates**: Layer 0 instructions now mandate automatic ADR/task/context creation without waiting for user
-- Memory bank self-documenting (this project uses its own memory bank structure)
+- **MCP Server v2.0.0**: Pure TypeScript, zero native dependencies
+  - In-memory index: `Map<string, ParsedItem>` + MiniSearch + adjacency lists
+  - 17 tools: search, query, recall, link, unlink, update-link, graph, schema, create-task, create-decision, create-note, update-status, update-decision, import-decisions, save-context, status, tags
+  - YAML frontmatter parsing (gray-matter) + v1 `**Key:** Value` backward compat
+  - Wikilink `[[ID]]` and inline `#tag` extraction
+  - 99 tests passing across 4 test files
+- **VS Code Extension v0.3.1**: Sidebar (Files/Tasks/Decisions), status bar, Knowledge Graph webview
+  - Zero runtime install — pure JS deps bundled at build time
+  - Dual-layout support: v1 (`tasks/`, `decisions/`) + v2 (flat `TASK-*.md`, `ADR-*.md`)
+  - YAML frontmatter parsing for sidebar status display
+- **Layer 0**: Custom instruction file — MCP-first principle, automatic updates
+- **Layer 1**: Agent skill + templates (projectbrief, task, decision)
+- **Layer 2**: Prompt files
+- **Layer 3**: Custom agents (Memory Planner + Memory Worker)
+- **Layer 4**: Hooks (SessionStart, PreCompact, Stop)
+- **Layer 5**: MCP server (see above)
+- **Layer 6**: VS Code extension (see above)
+- **Copilot Agent Plugin**: Manifests, community files, bundled MCP
+- **16 ADRs**: 15 accepted, 1 deprecated (ADR-0008)
 
 ## What Remains
-- [x] Layer 0: Custom instruction file
-- [x] Layer 1: Agent skill + templates
-- [x] Layer 2: Prompt files
-- [x] Layer 3: Custom agents with handoffs
-- [x] Layer 4: Hook configuration + scripts
-- [x] Layer 5: MCP server (TypeScript, SQLite + FTS5)
-- [x] Layer 6: VS Code extension — complete (sidebar, status bar, commands, file watcher, Knowledge Graph, MCP lifecycle)
-- [x] Layer 6: Knowledge Graph webview
-- [x] Layer 6: Embedded MCP server lifecycle
-- [x] Copilot plugin manifests and community files
+- [x] Layer 0-6: All layers built and feature-complete
+- [x] MCP Server v2 migration (ADR-0015 + ADR-0016)
+- [ ] Migrate this project's memory-bank to v2 flat layout
+- [ ] End-to-end testing of bundled VSIX
 - [ ] Real-world testing across different projects
-- [x] README.md for the repository
+- [ ] Update instruction and skill files for v2 tools
 
 ## Known Issues
-- MCP server requires `npm install && npx tsc` to build before use
-- Extension requires `npm install && npm run build` before loading in VS Code
-- MCP server must be restarted (VS Code reload) after adding new tools for them to appear
+- Extension needs `npm run build:all` to compile and bundle MCP server before packaging
+- v2 flat layout migration tool not yet implemented (manual migration works)
 
 ## Overall Status
-Phase: All 7 layers built and feature-complete, real-world testing remaining
-Completion: ~98% (all layers built with full features, remaining: real-world testing)
+Phase: v2 architecture implemented, pre-release testing
+Completion: ~95% (v2 implemented, remaining: testing + instruction updates)

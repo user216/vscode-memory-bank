@@ -1,0 +1,214 @@
+# ADR-0014: Storage Format Analysis — Markdown vs Database for Memory Bank
+
+**Status:** Accepted
+**Date:** 2026-03-27
+**Deciders:** Project maintainer + end-user testing feedback
+
+## Context
+
+### The Problem: Cascading Staleness
+
+End-user testing of the memory-bank MCP server revealed a systemic data integrity problem. The same volatile facts (tool count, test count, module count, task status) were hardcoded independently across 7+ markdown files:
+
+| File | Contains |
+|------|----------|
+| `projectbrief.md` | Tool count, module count |
+| `productContext.md` | Tool count, module count |
+| `techContext.md` | Module count, test count |
+| `activeContext.md` | Tool count, test count, module count |
+| `progress.md` | Test count, task descriptions, tool list |
+| `decisions/_index.md` | ADR descriptions with counts |
+| `CLAUDE.md` | Tool count, test count |
+
+Every feature addition required updating ALL files. Context compaction during long Claude Code sessions caused "amnesia" — the resuming session lost track of which files were already updated, leaving partial work committed. No canonical status vocabulary existed, so task files used "Pending", "Open", "Complete", "Completed" interchangeably.
+
+In the `astro-mcp` project (140 MCP tools, 88 tasks, 17 ADRs), a `scripts/sync_counts.py` was created as a band-aid: it derives counts from the actual codebase (grepping `@mcp.tool()` decorators, running `pytest --collect-only`) and regex-replaces stale numbers in all documentation files, enforced via a pre-commit hook.
+
+In the `vscode-memory-bank` project itself, the same drift was confirmed: `progress.md` claimed 9 tools and 65 tests, but the actual codebase had 14 tools and 109 tests across 4 test files.
+
+### The Question
+
+Should the memory-bank paradigm migrate from `.md` files to a SQL database (SQLite), a graph database (Neo4j), or a hybrid approach? This ADR documents the comprehensive analysis.
+
+## Decision
+
+**Keep markdown files as the source of truth. Redesign the template to eliminate duplication. Use structured YAML frontmatter for queryable metadata. Keep SQLite as an optional derived query cache (or replace it with a pure in-memory index — see ADR-0016).**
+
+The root cause of staleness is not the storage format — it's the template design that duplicates volatile data across multiple files. The fix is architectural: each fact appears in exactly one file, and aggregates are computed on demand rather than stored.
+
+## Research Conducted
+
+### Industry Analysis: AI Agent Memory Systems (2025-2026)
+
+Three leading AI memory frameworks were analyzed:
+
+#### Mem0 (Vector-First, Graph-Optional)
+- Primary store: vector database (Qdrant default, 20 backends supported)
+- Optional graph layer for entity-relationship triples
+- LLM-driven extraction with conflict resolution ("latest truth wins")
+- No built-in token budgeting — developer controls retrieval depth
+- Weakness: `infer=True`/`infer=False` mixing causes duplicates. LLM extraction is non-deterministic.
+
+#### Zep/Graphiti (Graph-First, Temporal)
+- Primary store: temporal knowledge graph (Neo4j default, also FalkorDB, Kuzu, Neptune)
+- Every fact has `valid_at` and `invalid_at` timestamps — temporal invalidation, never deletes
+- Hybrid retrieval: semantic search (embeddings) + BM25 keyword search + graph traversal with distance-based reranking
+- Best model for facts that change over time — full audit trail preserved
+- Weakness: operational complexity of running Neo4j, expensive at scale
+
+#### LangGraph (Checkpointer + Store)
+- Dual persistence: Checkpointers for thread-scoped state, Store for cross-thread memory
+- Store organized by namespace tuples, optional semantic search with embedder
+- Developer-controlled — no built-in extraction or forgetting
+- Production deployment: PostgreSQL
+- Weakness: no built-in token budgeting, no relationship modeling
+
+**Industry convergence**: Hybrid storage (structured + search) is standard. Pure vector-only is insufficient. Token budgeting is unsolved industry-wide. Our existing `memory_recall` with `budget` parameter is ahead of the curve.
+
+### Zettelkasten Method Analysis
+
+The Zettelkasten (slip-box) method, originated by sociologist Niklas Luhmann (90,000 notes, 70+ books), was analyzed for architectural principles:
+
+**Core principles applicable to memory-bank:**
+1. **Atomicity** — one idea per note. Current memory-bank violates this (`progress.md` contains 5+ distinct concepts).
+2. **No duplication** — write it once, link to it. Currently the same tool count appears in 7 files.
+3. **Links over hierarchy** — structure emerges from connections, not folder trees.
+4. **Structure notes** — curated entry points into the knowledge network, not comprehensive indexes.
+
+**Note type taxonomy (Sönke Ahrens):**
+- Fleeting notes: quick captures (→ session-local scratchpad)
+- Literature notes: reference material (→ external artifact links)
+- Permanent notes: distilled knowledge (→ decisions, architecture patterns)
+- Project notes: tied to specific outputs (→ tasks)
+
+**Limitations for AI agents:**
+- No action orientation (designed for understanding, not shipping)
+- No temporal validity (notes don't expire; project context does)
+- "Write for print" overhead too expensive for AI generating many notes
+- Single-thinker design (no conflict resolution; but git handles this)
+
+### Obsidian Ecosystem Analysis
+
+Obsidian's plugin ecosystem was analyzed for patterns transferable to memory-bank:
+
+#### Dataview Plugin (Markdown as Queryable Database)
+The Dataview plugin (30K+ GitHub stars) treats an Obsidian vault as a database:
+
+**Three data sources:**
+1. YAML frontmatter — standard `---` delimited metadata, all keys become queryable fields
+2. Inline fields — `[key:: value]` syntax for metadata on individual list items or tasks
+3. Implicit fields — auto-extracted: `file.inlinks`, `file.outlinks`, `file.tags`, `file.tasks`, `file.ctime/mtime`
+
+**Query language (DQL):** Pipeline-style. `FROM #tag WHERE status = "active" SORT created DESC GROUP BY category LIMIT 10`. Supports computed fields, aggregations, 60+ built-in functions (sum, average, filter, map, join, etc.).
+
+**Indexing architecture:** In-memory `Map<string, PageMetadata>` + bidirectional `IndexMap` for links + `PrefixIndex` for folders. Uses web workers for async parsing, IndexedDB for startup caching. Incremental updates via file-change events with a `revision` counter.
+
+**Key insight**: Dataview proves that markdown files with structured frontmatter can be queried with database-like power, without requiring an actual database. The index is an in-memory cache rebuilt from files on startup.
+
+#### Tasks Plugin
+Manages tasks across all vault files:
+- Emoji-based metadata: `📅` due date, `🔼` priority, `✅` done date, `🔁` recurrence
+- Alternative Dataview-compatible format: `[due:: 2026-04-01] [priority:: high]`
+- Task queries filter across the entire vault by status, date, priority
+- Subtask hierarchy with `fullyCompleted` tracking
+
+#### Relevant Obsidian MCP Integrations
+- **zettelkasten-mcp** (entanglr/zettelkasten-mcp): MCP server providing LLM access to Zettelkasten vaults
+- **IWE** (iwe-org/iwe): "Your second brain that AI agents can navigate" — CLI with `find`, `retrieve`, `squash` (consolidate subgraph into LLM context block), `extract`, `inline`
+- Both implement the pattern of AI agents querying a markdown-based knowledge base through tools
+
+## Alternatives Considered
+
+### Alternative 1: Full migration to SQLite as source of truth (DB-first)
+
+**Proposed architecture:** All data in typed SQL tables (`decisions`, `tasks`, `context`). Markdown files eliminated or generated as optional read-only exports.
+
+**Arguments for:**
+
+| # | Argument |
+|---|----------|
+| 1 | Single source of truth — one row, one table, one place |
+| 2 | Counts computed via `SELECT COUNT(*)` — always correct |
+| 3 | Schema enforcement via `CHECK` constraints |
+| 4 | No sync engine needed |
+| 5 | No parser needed |
+| 6 | No index files needed |
+| 7 | Temporal history via append-only tables |
+| 8 | Atomic writes via SQLite transactions |
+| 9 | Structured queries without parsing files |
+| 10 | Relationships as first-class SQL joins |
+| 11 | Context compaction amnesia solved — DB state always complete |
+| 12 | Simpler write path (INSERT instead of write-file + sync) |
+| 13 | Eliminates sync_counts.py entirely |
+| 14 | FTS5 search just works |
+
+**Arguments against (critical):**
+
+| # | Argument | Severity |
+|---|----------|----------|
+| 1 | **LLM indexing breaks** — Copilot, Claude Code file reading, CodeGraphContext all index files on disk. A `.db` binary is opaque to all of them. Memory-bank becomes a "write-only system" — data goes in but never influences LLM context unless MCP server is running AND explicitly called. | **Fatal** |
+| 2 | **No fallback** — if MCP server crashes, isn't configured, or isn't installed, ALL project knowledge is inaccessible. Markdown files are always readable via `Read` tool. | **Critical** |
+| 3 | **Bootstrapping problem** — for MCP tools to provide context, the server must be running. For the server to run, it must be configured. Before configuration, the agent has zero access to project decisions. | **Critical** |
+| 4 | **Other AI tools** — Cursor, Windsurf, Cline, and future AI coding tools read project files. They may not support MCP. DB-only memory is invisible to them. | **High** |
+
+**Verdict: Rejected.** The indexing/accessibility argument is decisive. Memory-bank must be readable without any tooling running.
+
+### Alternative 2: Graph database (Neo4j, FalkorDB, Kuzu)
+
+The existing `links` table with BFS traversal in `memory-graph.ts` already provides property graph functionality (nodes = items, edges = links with typed relations). At memory-bank scale (50-500 items), SQLite handles graph traversal trivially.
+
+A dedicated graph DB would add Cypher/SPARQL query language and native path-finding, but costs operational complexity (server to run), another dependency, and is overkill — sub-500 nodes don't benefit from graph-optimized storage.
+
+**Verdict: Rejected.** The `links` table + BFS is sufficient. Neo4j is engineering overkill for this scale.
+
+### Alternative 3: Hybrid — DB as source of truth with generated markdown
+
+Write to DB, auto-generate `.md` files as read-only cached artifacts (with `<!-- AUTO-GENERATED -->` headers).
+
+**Problem:** Two sources to maintain synchronization between. If generation fails or is delayed, the LLM reads stale markdown. Adds complexity without eliminating the sync problem — just reverses its direction.
+
+**Verdict: Rejected.** Adds complexity without clear benefit over the chosen approach.
+
+### Alternative 4: Vector database / embedding-based retrieval
+
+At memory-bank scale (50-500 items, under 1MB total text), embedding-based retrieval adds: a dependency on an embedding model (API call or local model), a vector DB (Qdrant, Chroma, etc.), and latency for embedding generation. FTS5 or MiniSearch keyword search is faster, simpler, and sufficient for this volume.
+
+**Verdict: Rejected.** Overkill for the scale. FTS5/MiniSearch provides adequate search quality.
+
+### Alternative 5: Event sourcing
+
+Store all changes as immutable events, compute current state by replaying. Elegant but adds significant complexity for a system that doesn't need auditability or time-travel queries as primary features.
+
+**Verdict: Rejected.** Overcomplicated for the problem being solved.
+
+## Consequences
+
+### Positive
+- Markdown files remain the universal interchange format — readable by any LLM, any tool, any human with a text editor
+- No database dependency required for basic operation (see ADR-0016)
+- YAML frontmatter provides structured metadata without sacrificing readability
+- Wikilinks and tags provide Zettelkasten-style organization without folder hierarchy
+- The staleness problem is solved at the template level (fewer files, no duplication) rather than with band-aid scripts
+- Compatible with the Obsidian ecosystem if users want to browse their memory-bank in Obsidian
+
+### Negative
+- Search quality with in-memory index (MiniSearch) may be slightly lower than FTS5 for edge cases
+- Schema enforcement moves to application code (MCP tool validation) instead of SQL `CHECK` constraints
+- Memory-bank notes must follow frontmatter conventions — a broken note (missing `---`) won't be properly indexed
+
+### Neutral
+- The `memory_recall` token-budgeted retrieval pattern is preserved regardless of storage backend
+- Migration tooling needed for existing v1 memory-banks (see ADR-0015)
+- The decision does not preclude adding SQLite back as an optional acceleration layer in the future
+
+## References
+- Luhmann, N. "Kommunikation mit Zettelkästen" (Communication with Slip Boxes), 1981
+- Ahrens, S. "How to Take Smart Notes", 2017
+- Matuschak, A. "Evergreen Notes" (notes.andymatuschak.org)
+- Obsidian Dataview plugin (github.com/blacksmithgu/obsidian-dataview)
+- Obsidian Tasks plugin (github.com/obsidian-tasks-group/obsidian-tasks)
+- IWE: "Your second brain that AI agents can navigate" (github.com/iwe-org/iwe)
+- Mem0 (github.com/mem0ai/mem0)
+- Zep/Graphiti (github.com/getzep/zep)
+- LangGraph (github.com/langchain-ai/langgraph)
+- astro-mcp sync_counts.py (field-tested count sync solution)

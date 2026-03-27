@@ -2,8 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getDb } from "../db.js";
-import { syncSingleFile } from "../sync.js";
+import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath, updateDecisionIndex } from "./shared-utils.js";
 
 interface AdrSections {
@@ -80,7 +79,7 @@ function rebuildAdr(id: string, sections: AdrSections): string {
 export function registerMemoryUpdateDecision(server: McpServer): void {
   server.tool(
     "memory_update_decision",
-    "Update the content of an existing ADR decision. Can modify title, context, decision, alternatives, and/or consequences sections. For status-only changes, use memory_update_status instead. Rewrites the markdown file, updates the index, and syncs to SQLite.",
+    "Update the content of an existing ADR decision. Can modify title, context, decision, alternatives, and/or consequences sections. For status-only changes, use memory_update_status instead. Rewrites the markdown file, updates the index, and syncs to the in-memory index.",
     {
       id: z
         .string()
@@ -113,12 +112,10 @@ export function registerMemoryUpdateDecision(server: McpServer): void {
     },
     async ({ id, title, context, decision, alternatives, consequences }) => {
       const mbPath = getMemoryBankPath();
-      const db = getDb();
+      const store = getStore();
 
-      // Find the item in the database
-      const item = db
-        .prepare("SELECT id, type, file_path FROM items WHERE id = ?")
-        .get(id) as { id: string; type: string; file_path: string } | undefined;
+      // Find the item in the store
+      const item = store.items.get(id);
 
       if (!item) {
         return {
@@ -142,13 +139,13 @@ export function registerMemoryUpdateDecision(server: McpServer): void {
         };
       }
 
-      const filePath = path.join(mbPath, item.file_path);
+      const filePath = path.join(mbPath, item.filePath);
       if (!fs.existsSync(filePath)) {
         return {
           content: [
             {
               type: "text" as const,
-              text: `File not found: ${item.file_path}. Database may be out of sync — try memory_import_decisions to re-sync.`,
+              text: `File not found: ${item.filePath}. Index may be out of sync — try memory_import_decisions to re-sync.`,
             },
           ],
         };
@@ -162,7 +159,7 @@ export function registerMemoryUpdateDecision(server: McpServer): void {
           content: [
             {
               type: "text" as const,
-              text: `Could not parse ADR structure in ${item.file_path}. File may not follow standard ADR format.`,
+              text: `Could not parse ADR structure in ${item.filePath}. File may not follow standard ADR format.`,
             },
           ],
         };
@@ -228,14 +225,14 @@ export function registerMemoryUpdateDecision(server: McpServer): void {
       const decisionsDir = path.dirname(filePath);
       updateDecisionIndex(decisionsDir);
 
-      // Sync to SQLite
-      syncSingleFile(mbPath, filePath);
+      // Sync to in-memory index
+      reindexFile(store, filePath);
 
       return {
         content: [
           {
             type: "text" as const,
-            text: `Decision updated: **${id}**\nChanged: ${changes.join(", ")}\nFile: ${item.file_path}`,
+            text: `Decision updated: **${id}**\nChanged: ${changes.join(", ")}\nFile: ${item.filePath}`,
           },
         ],
       };

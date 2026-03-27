@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { syncSingleFile } from "../sync.js";
+import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath, slugify, getNextId, updateDecisionIndex, DECISION_STATUSES } from "./shared-utils.js";
 
 interface FrontMatter {
@@ -115,6 +115,7 @@ export function registerMemoryImportDecisions(server: McpServer): void {
     async ({ source_directory, preserve_content }) => {
       const mbPath = getMemoryBankPath();
       const decisionsDir = path.join(mbPath, "decisions");
+      const store = getStore();
 
       if (!fs.existsSync(decisionsDir)) {
         fs.mkdirSync(decisionsDir, { recursive: true });
@@ -123,14 +124,14 @@ export function registerMemoryImportDecisions(server: McpServer): void {
       const results: string[] = [];
 
       if (!source_directory) {
-        // Re-sync mode: read existing decisions and sync to SQLite
+        // Re-sync mode: read existing decisions and re-index
         const existingFiles = fs
           .readdirSync(decisionsDir)
           .filter((f) => f.match(/^ADR-\d{4}/) && f.endsWith(".md"));
 
         for (const f of existingFiles) {
           const filePath = path.join(decisionsDir, f);
-          syncSingleFile(mbPath, filePath);
+          reindexFile(store, filePath);
           const idMatch = f.match(/^(ADR-\d{4})/);
           results.push(`Synced: ${idMatch ? idMatch[1] : f}`);
         }
@@ -141,7 +142,7 @@ export function registerMemoryImportDecisions(server: McpServer): void {
           content: [
             {
               type: "text" as const,
-              text: `Re-synced ${results.length} existing decisions to SQLite.\n${results.join("\n")}`,
+              text: `Re-synced ${results.length} existing decisions to index.\n${results.join("\n")}`,
             },
           ],
         };
@@ -238,7 +239,7 @@ export function registerMemoryImportDecisions(server: McpServer): void {
         }
 
         fs.writeFileSync(filePath, outputContent);
-        syncSingleFile(mbPath, filePath);
+        reindexFile(store, filePath);
         results.push(`Imported: ${path.basename(sourceFile)} → **${adrId}**: ${title}`);
       }
 

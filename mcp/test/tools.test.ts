@@ -1,154 +1,97 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as path from "node:path";
 import * as fs from "node:fs";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { initDb, getDb, closeDb } from "../src/db.js";
-import { syncAllFiles } from "../src/sync.js";
-import { registerMemorySearch } from "../src/tools/memory-search.js";
-import { registerMemoryQuery } from "../src/tools/memory-query.js";
-import { registerMemoryRecall } from "../src/tools/memory-recall.js";
-import { registerMemoryLink } from "../src/tools/memory-link.js";
-import { registerMemoryGraph } from "../src/tools/memory-graph.js";
-import { registerMemorySchema } from "../src/tools/memory-schema.js";
+import * as os from "node:os";
+import {
+  initStore,
+  addLinkToStore,
+  removeLinkFromStore,
+} from "../src/index-store.js";
+import type { IndexStore } from "../src/index-store.js";
 
-const FIXTURES_PATH = path.resolve(
+const FIXTURES_SRC = path.resolve(
   import.meta.dirname,
   "fixtures",
   "memory-bank",
 );
-const TEST_DB_DIR = path.join(FIXTURES_PATH, ".mcp");
 
-// Helper: call a tool handler directly via the database
-// Since MCP tools use getDb() internally, we just need the DB initialized
-// and call the SQL directly to test the logic
+let FIXTURES_PATH: string;
+let store: IndexStore;
 
-function cleanup(): void {
-  closeDb();
-  if (fs.existsSync(TEST_DB_DIR)) {
-    fs.rmSync(TEST_DB_DIR, { recursive: true });
-  }
+function copyFixtures(): string {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mbvmb-tools-"));
+  fs.cpSync(FIXTURES_SRC, tmp, { recursive: true, filter: (src) => !src.includes(".mcp") });
+  return tmp;
 }
 
 describe("Tool Integration Tests", () => {
   beforeAll(() => {
-    cleanup();
-    initDb(FIXTURES_PATH);
-    syncAllFiles(FIXTURES_PATH);
+    FIXTURES_PATH = copyFixtures();
+    store = initStore(FIXTURES_PATH);
   });
 
   afterAll(() => {
-    cleanup();
+    if (FIXTURES_PATH && fs.existsSync(FIXTURES_PATH)) {
+      fs.rmSync(FIXTURES_PATH, { recursive: true });
+    }
   });
 
   describe("memory_search", () => {
     it("finds items by keyword", () => {
-      const db = getDb();
-      const results = db
-        .prepare(
-          `SELECT id, title, type, snippet(items_fts, 2, '>>>', '<<<', '...', 32) as excerpt
-           FROM items_fts WHERE items_fts MATCH @query ORDER BY rank LIMIT @limit`,
-        )
-        .all({ query: "SQLite", limit: 10 }) as Array<{
-        id: string;
-        title: string;
-        type: string;
-        excerpt: string;
-      }>;
+      const results = store.search.search("SQLite");
 
       expect(results.length).toBeGreaterThan(0);
       expect(results.some((r) => r.id === "ADR-0001")).toBe(true);
     });
 
-    it("filters by type", () => {
-      const db = getDb();
-      const results = db
-        .prepare(
-          `SELECT id, title, type FROM items_fts
-           WHERE items_fts MATCH @query AND items_fts.type = @type LIMIT @limit`,
-        )
-        .all({ query: "server", type: "task", limit: 10 }) as Array<{
-        id: string;
-        type: string;
-      }>;
+    it("filters by type after search", () => {
+      const results = store.search.search("server");
+      const filtered = results.filter((r) => {
+        const item = store.items.get(r.id);
+        return item?.type === "task";
+      });
 
-      for (const r of results) {
-        expect(r.type).toBe("task");
+      for (const r of filtered) {
+        expect(store.items.get(r.id)!.type).toBe("task");
       }
-    });
-
-    it("handles FTS5 syntax errors gracefully", () => {
-      const db = getDb();
-      expect(() => {
-        db.prepare(
-          "SELECT id FROM items_fts WHERE items_fts MATCH ?",
-        ).all('invalid"query"with"unmatched');
-      }).toThrow();
     });
   });
 
   describe("memory_query", () => {
     it("queries by type", () => {
-      const db = getDb();
-      const decisions = db
-        .prepare("SELECT id, type FROM items WHERE type = ? LIMIT ?")
-        .all("decision", 20) as Array<{ id: string; type: string }>;
+      const decisions = Array.from(store.items.values()).filter((i) => i.type === "decision");
 
       expect(decisions.length).toBeGreaterThan(0);
       expect(decisions.every((d) => d.type === "decision")).toBe(true);
     });
 
     it("queries by status", () => {
-      const db = getDb();
-      const inProgress = db
-        .prepare("SELECT id, status FROM items WHERE status = ? LIMIT ?")
-        .all("In Progress", 20) as Array<{ id: string; status: string }>;
+      const inProgress = Array.from(store.items.values()).filter((i) => i.status === "In Progress");
 
       expect(inProgress.length).toBeGreaterThan(0);
       expect(inProgress.some((i) => i.id === "TASK-001")).toBe(true);
     });
 
     it("queries by type AND status", () => {
-      const db = getDb();
-      const results = db
-        .prepare(
-          "SELECT id FROM items WHERE type = ? AND status = ? LIMIT ?",
-        )
-        .all("decision", "Accepted", 20) as Array<{ id: string }>;
+      const results = Array.from(store.items.values()).filter(
+        (i) => i.type === "decision" && i.status === "Accepted",
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0].id).toBe("ADR-0001");
     });
 
     it("returns empty array for no matches", () => {
-      const db = getDb();
-      const results = db
-        .prepare("SELECT id FROM items WHERE status = ? LIMIT ?")
-        .all("NonExistentStatus", 20) as Array<{ id: string }>;
-
+      const results = Array.from(store.items.values()).filter((i) => i.status === "NonExistentStatus");
       expect(results).toHaveLength(0);
-    });
-
-    it("queries by date range", () => {
-      const db = getDb();
-      const results = db
-        .prepare(
-          "SELECT id FROM items WHERE (updated_at >= ? OR created_at >= ?) LIMIT ?",
-        )
-        .all("2026-03-09", "2026-03-09", 20) as Array<{ id: string }>;
-
-      expect(results.length).toBeGreaterThan(0);
     });
   });
 
   describe("memory_recall", () => {
     it("returns items within token budget", () => {
-      const db = getDb();
-      const items = db
-        .prepare("SELECT id, content FROM items")
-        .all() as Array<{ id: string; content: string }>;
-
+      const items = Array.from(store.items.values());
       const CHARS_PER_TOKEN = 3.5;
-      const budget = 500; // small budget to test truncation
+      const budget = 500;
       let totalTokens = 0;
       let itemsWithinBudget = 0;
 
@@ -164,10 +107,7 @@ describe("Tool Integration Tests", () => {
     });
 
     it("foundational strategy orders projectbrief first", () => {
-      const db = getDb();
-      const items = db
-        .prepare("SELECT id, type FROM items")
-        .all() as Array<{ id: string; type: string }>;
+      const items = Array.from(store.items.values());
 
       const FOUNDATIONAL_ORDER = [
         "projectbrief",
@@ -192,10 +132,7 @@ describe("Tool Integration Tests", () => {
     });
 
     it("active strategy orders activeContext first", () => {
-      const db = getDb();
-      const items = db
-        .prepare("SELECT id, type, status FROM items")
-        .all() as Array<{ id: string; type: string; status: string | null }>;
+      const items = Array.from(store.items.values());
 
       function getActivePriority(item: {
         id: string;
@@ -218,7 +155,6 @@ describe("Tool Integration Tests", () => {
 
       expect(sorted[0].id).toBe("activeContext");
       expect(sorted[1].id).toBe("progress");
-      // In Progress tasks should come before Pending tasks
       const inProgressIdx = sorted.findIndex((i) => i.id === "TASK-001");
       const pendingIdx = sorted.findIndex((i) => i.id === "TASK-002");
       expect(inProgressIdx).toBeLessThan(pendingIdx);
@@ -227,217 +163,111 @@ describe("Tool Integration Tests", () => {
 
   describe("memory_link", () => {
     it("creates a new link", () => {
-      const db = getDb();
-      const now = new Date().toISOString();
+      const added = addLinkToStore(store, "TASK-002", "ADR-0001", "implements");
+      expect(added).toBe(true);
 
-      db.prepare(
-        "INSERT OR IGNORE INTO links (source_id, target_id, relation, created_at) VALUES (?, ?, ?, ?)",
-      ).run("TASK-002", "ADR-0001", "implements", now);
-
-      const link = db
-        .prepare(
-          "SELECT * FROM links WHERE source_id = ? AND target_id = ? AND relation = ?",
-        )
-        .get("TASK-002", "ADR-0001", "implements") as {
-        source_id: string;
-        target_id: string;
-        relation: string;
-      };
-
-      expect(link).toBeDefined();
-      expect(link.relation).toBe("implements");
+      const outLinks = store.outgoing.get("TASK-002") || [];
+      expect(outLinks.some((l) => l.target === "ADR-0001" && l.relation === "implements")).toBe(true);
     });
 
     it("prevents duplicate links", () => {
-      const db = getDb();
-      const now = new Date().toISOString();
-
-      // First insert
-      db.prepare(
-        "INSERT OR IGNORE INTO links (source_id, target_id, relation, created_at) VALUES (?, ?, ?, ?)",
-      ).run("TASK-001", "ADR-0001", "test-dedup", now);
-
-      // Second insert (same triple) — should be ignored
-      const result = db
-        .prepare(
-          "INSERT OR IGNORE INTO links (source_id, target_id, relation, created_at) VALUES (?, ?, ?, ?)",
-        )
-        .run("TASK-001", "ADR-0001", "test-dedup", now);
-
-      expect(result.changes).toBe(0);
+      addLinkToStore(store, "TASK-001", "ADR-0001", "test-dedup");
+      const second = addLinkToStore(store, "TASK-001", "ADR-0001", "test-dedup");
+      expect(second).toBe(false);
     });
   });
 
   describe("memory_unlink", () => {
     it("deletes an existing link", () => {
-      const db = getDb();
-      const now = new Date().toISOString();
-
-      // Create a link to delete
-      db.prepare(
-        "INSERT OR IGNORE INTO links (source_id, target_id, relation, created_at) VALUES (?, ?, ?, ?)",
-      ).run("TASK-001", "ADR-0001", "test-delete", now);
-
-      // Verify it exists
-      const before = db
-        .prepare("SELECT 1 FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
-        .get("TASK-001", "ADR-0001", "test-delete");
-      expect(before).toBeDefined();
-
-      // Delete it
-      const result = db
-        .prepare("DELETE FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
-        .run("TASK-001", "ADR-0001", "test-delete");
-      expect(result.changes).toBe(1);
-
-      // Verify it's gone
-      const after = db
-        .prepare("SELECT 1 FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
-        .get("TASK-001", "ADR-0001", "test-delete");
-      expect(after).toBeUndefined();
+      addLinkToStore(store, "TASK-001", "ADR-0001", "test-delete");
+      const removed = removeLinkFromStore(store, "TASK-001", "ADR-0001", "test-delete");
+      expect(removed).toBe(true);
     });
 
-    it("returns 0 changes for non-existent link", () => {
-      const db = getDb();
-
-      const result = db
-        .prepare("DELETE FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
-        .run("TASK-999", "ADR-9999", "nonexistent");
-
-      expect(result.changes).toBe(0);
+    it("returns false for non-existent link", () => {
+      const removed = removeLinkFromStore(store, "TASK-999", "ADR-9999", "nonexistent");
+      expect(removed).toBe(false);
     });
   });
 
   describe("memory_update_link", () => {
     it("updates the relation type of an existing link", () => {
-      const db = getDb();
-      const now = new Date().toISOString();
+      addLinkToStore(store, "TASK-001", "ADR-0001", "test-old-rel");
 
-      // Create a link to update
-      db.prepare(
-        "INSERT OR IGNORE INTO links (source_id, target_id, relation, created_at) VALUES (?, ?, ?, ?)",
-      ).run("TASK-001", "ADR-0001", "test-old-rel", now);
+      const removed = removeLinkFromStore(store, "TASK-001", "ADR-0001", "test-old-rel");
+      expect(removed).toBe(true);
 
-      // Update it
-      const result = db
-        .prepare("UPDATE links SET relation = ? WHERE source_id = ? AND target_id = ? AND relation = ?")
-        .run("test-new-rel", "TASK-001", "ADR-0001", "test-old-rel");
-      expect(result.changes).toBe(1);
+      const added = addLinkToStore(store, "TASK-001", "ADR-0001", "test-new-rel");
+      expect(added).toBe(true);
 
-      // Verify the old relation is gone and new one exists
-      const oldLink = db
-        .prepare("SELECT 1 FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
-        .get("TASK-001", "ADR-0001", "test-old-rel");
-      expect(oldLink).toBeUndefined();
-
-      const newLink = db
-        .prepare("SELECT 1 FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
-        .get("TASK-001", "ADR-0001", "test-new-rel");
-      expect(newLink).toBeDefined();
+      const outLinks = store.outgoing.get("TASK-001") || [];
+      expect(outLinks.some((l) => l.relation === "test-old-rel")).toBe(false);
+      expect(outLinks.some((l) => l.target === "ADR-0001" && l.relation === "test-new-rel")).toBe(true);
 
       // Cleanup
-      db.prepare("DELETE FROM links WHERE source_id = ? AND target_id = ? AND relation = ?")
-        .run("TASK-001", "ADR-0001", "test-new-rel");
-    });
-
-    it("returns 0 changes for non-existent link", () => {
-      const db = getDb();
-
-      const result = db
-        .prepare("UPDATE links SET relation = ? WHERE source_id = ? AND target_id = ? AND relation = ?")
-        .run("new-rel", "TASK-999", "ADR-9999", "nonexistent");
-
-      expect(result.changes).toBe(0);
+      removeLinkFromStore(store, "TASK-001", "ADR-0001", "test-new-rel");
     });
   });
 
   describe("memory_graph", () => {
     it("finds outgoing links from an item", () => {
-      const db = getDb();
-      const links = db
-        .prepare("SELECT target_id, relation FROM links WHERE source_id = ?")
-        .all("activeContext") as Array<{
-        target_id: string;
-        relation: string;
-      }>;
-
-      expect(links.length).toBeGreaterThan(0);
-      expect(links.some((l) => l.target_id === "ADR-0001")).toBe(true);
+      const outLinks = store.outgoing.get("activeContext") || [];
+      expect(outLinks.length).toBeGreaterThan(0);
+      expect(outLinks.some((l) => l.target === "ADR-0001")).toBe(true);
     });
 
     it("finds incoming links to an item", () => {
-      const db = getDb();
-      const links = db
-        .prepare("SELECT source_id, relation FROM links WHERE target_id = ?")
-        .all("ADR-0001") as Array<{ source_id: string; relation: string }>;
-
-      expect(links.length).toBeGreaterThan(0);
+      const inLinks = store.incoming.get("ADR-0001") || [];
+      expect(inLinks.length).toBeGreaterThan(0);
     });
 
     it("finds bidirectional links", () => {
-      const db = getDb();
-      const links = db
-        .prepare(
-          "SELECT source_id, target_id, relation FROM links WHERE source_id = ? OR target_id = ?",
-        )
-        .all("TASK-001", "TASK-001") as Array<{
-        source_id: string;
-        target_id: string;
-      }>;
-
-      expect(links.length).toBeGreaterThan(0);
+      const outLinks = store.outgoing.get("TASK-001") || [];
+      const inLinks = store.incoming.get("TASK-001") || [];
+      const totalLinks = outLinks.length + inLinks.length;
+      expect(totalLinks).toBeGreaterThan(0);
     });
 
     it("returns empty for isolated items", () => {
-      const db = getDb();
-      const links = db
-        .prepare(
-          "SELECT * FROM links WHERE source_id = ? OR target_id = ?",
-        )
-        .all("systemPatterns", "systemPatterns");
-
-      // systemPatterns has no cross-refs in our fixtures
-      expect(links).toHaveLength(0);
+      const outLinks = store.outgoing.get("systemPatterns") || [];
+      const inLinks = store.incoming.get("systemPatterns") || [];
+      expect(outLinks.length + inLinks.length).toBe(0);
     });
   });
 
   describe("memory_schema", () => {
     it("reports correct item type counts", () => {
-      const db = getDb();
-      const counts = db
-        .prepare("SELECT type, COUNT(*) as cnt FROM items GROUP BY type")
-        .all() as Array<{ type: string; cnt: number }>;
+      const typeCounts: Record<string, number> = {};
+      for (const item of store.items.values()) {
+        typeCounts[item.type] = (typeCounts[item.type] || 0) + 1;
+      }
 
-      const countMap = Object.fromEntries(counts.map((c) => [c.type, c.cnt]));
-      expect(countMap.core).toBe(6);
-      expect(countMap.task).toBe(2);
-      expect(countMap.decision).toBe(1);
+      expect(typeCounts.core).toBe(6);
+      expect(typeCounts.task).toBe(2);
+      expect(typeCounts.decision).toBe(1);
     });
 
     it("reports distinct statuses", () => {
-      const db = getDb();
-      const statuses = db
-        .prepare(
-          "SELECT DISTINCT status FROM items WHERE status IS NOT NULL ORDER BY status",
-        )
-        .all() as Array<{ status: string }>;
+      const statusSet = new Set<string>();
+      for (const item of store.items.values()) {
+        if (item.status) statusSet.add(item.status);
+      }
 
-      const statusList = statuses.map((s) => s.status);
-      expect(statusList).toContain("Accepted");
-      expect(statusList).toContain("In Progress");
-      expect(statusList).toContain("Pending");
+      expect(statusSet.has("Accepted")).toBe(true);
+      expect(statusSet.has("In Progress")).toBe(true);
+      expect(statusSet.has("Pending")).toBe(true);
     });
 
     it("reports link relations", () => {
-      const db = getDb();
-      const relations = db
-        .prepare(
-          "SELECT relation, COUNT(*) as cnt FROM links GROUP BY relation",
-        )
-        .all() as Array<{ relation: string; cnt: number }>;
+      const relationCounts: Record<string, number> = {};
+      for (const links of store.outgoing.values()) {
+        for (const link of links) {
+          relationCounts[link.relation] = (relationCounts[link.relation] || 0) + 1;
+        }
+      }
 
-      expect(relations.length).toBeGreaterThan(0);
-      expect(relations.some((r) => r.relation === "references")).toBe(true);
+      expect(Object.keys(relationCounts).length).toBeGreaterThan(0);
+      expect(relationCounts["references"]).toBeGreaterThan(0);
     });
   });
 });

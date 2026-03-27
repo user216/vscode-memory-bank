@@ -1,25 +1,26 @@
 # Active Context
 
 ## Current Focus
-Copilot Agent Plugin distribution + npm publish for MCP server
+Memory Bank v2 implementation — completed ADR-0015 (Zettelkasten architecture) and ADR-0016 (eliminate SQLite)
 
 ## Recent Changes
-- Created user216/memory-bank-plugin GitHub repo as Copilot Agent Plugin
-- Added copilot-plugin/ as git submodule in parent repo
-- Plugin contains: plugin.json, skills/, agents/, hooks/, prompts/, instructions/, .mcp.json
-- Plugin .mcp.json uses npx vscode-memory-bank-mcp@latest for MCP server
-- Prepared mcp/package.json for npm publish (added repository, keywords, engines, prepublishOnly)
-- Fixed bin path format (removed ./ prefix)
-- Created ADR-0013 documenting Agent Plugin distribution decision
+- Replaced `better-sqlite3` with `minisearch` + `gray-matter` — zero native dependencies
+- Created `index-store.ts` with in-memory Map + MiniSearch + adjacency lists
+- Updated all 14 tool files from SQL → Map/array operations
+- Added 3 new tools: `memory_status`, `memory_tags`, `memory_create_note`
+- Added YAML frontmatter parsing, wikilink extraction, inline tag extraction
+- Updated VS Code extension: eliminated runtime `npm install`, dual-layout support
+- 99 tests passing across 4 test files
 
 ## Current Decisions
-- ADR-0008: Auto-commit memory-bank.db via git hooks and extension activation
-- ADR-0009: Centralize duplicated tool helpers into shared-utils.ts
-- ADR-0011: Use CodeGraphContext as external end-user tool, develop separately
+- ADR-0014: Storage Format Analysis (Accepted) — markdown remains source of truth
+- ADR-0015: v2 Architecture (Accepted) — Obsidian-Zettelkasten paradigm
+- ADR-0016: Eliminate SQLite (Accepted) — MiniSearch + gray-matter, zero native deps
+- ADR-0008: Auto-commit DB (Deprecated) — no longer applicable
 
 ## Next Steps
-1. Run npm adduser && cd mcp && npm publish --access public to publish MCP server to npm
-2. Submit memory-bank-plugin to github/copilot-plugins marketplace (PR to add to plugins/)
-3. Keep copilot-plugin submodule in sync when skills/agents/hooks change in monorepo
-4. Test plugin install via @agentPlugins search in VS Code Insiders
-
+1. Test MCP server end-to-end with Claude Code
+2. Build extension VSIX and test bundled MCP server
+3. Migrate this project's own memory-bank to v2 format (flat layout, YAML frontmatter)
+4. Update instructions and skill for v2 tools/patterns
+5. Real-world testing across different projects

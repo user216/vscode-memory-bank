@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDb } from "../db.js";
+import { getStore, addLinkToStore } from "../index-store.js";
 
 export function registerMemoryLink(server: McpServer): void {
   server.tool(
@@ -12,11 +12,10 @@ export function registerMemoryLink(server: McpServer): void {
       relation: z.string().describe("Relationship type describing how source relates to target. Common: 'implements' (task→decision), 'supersedes' (new→old), 'blocks', 'depends-on', 'references'. Free-form string."),
     },
     async ({ source, target, relation }) => {
-      const db = getDb();
+      const store = getStore();
 
-      // Validate both items exist
-      const sourceItem = db.prepare("SELECT id, title FROM items WHERE id = ?").get(source) as { id: string; title: string } | undefined;
-      const targetItem = db.prepare("SELECT id, title FROM items WHERE id = ?").get(target) as { id: string; title: string } | undefined;
+      const sourceItem = store.items.get(source);
+      const targetItem = store.items.get(target);
 
       if (!sourceItem) {
         return {
@@ -30,34 +29,22 @@ export function registerMemoryLink(server: McpServer): void {
         };
       }
 
-      const now = new Date().toISOString();
+      const added = addLinkToStore(store, source, target, relation);
 
-      try {
-        db.prepare(
-          "INSERT INTO links (source_id, target_id, relation, created_at) VALUES (@source_id, @target_id, @relation, @created_at)",
-        ).run({
-          source_id: source,
-          target_id: target,
-          relation,
-          created_at: now,
-        });
-
+      if (!added) {
         return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Link created: **${sourceItem.title}** (${source}) —[${relation}]→ **${targetItem.title}** (${target})`,
-            },
-          ],
+          content: [{ type: "text" as const, text: `Link already exists: ${source} —[${relation}]→ ${target}` }],
         };
-      } catch (err) {
-        if (err instanceof Error && err.message.includes("UNIQUE")) {
-          return {
-            content: [{ type: "text" as const, text: `Link already exists: ${source} —[${relation}]→ ${target}` }],
-          };
-        }
-        throw err;
       }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Link created: **${sourceItem.title}** (${source}) —[${relation}]→ **${targetItem.title}** (${target})`,
+          },
+        ],
+      };
     },
   );
 }

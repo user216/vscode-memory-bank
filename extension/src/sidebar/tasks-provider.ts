@@ -19,33 +19,69 @@ export class TasksTreeProvider
   }
 
   async getChildren(): Promise<TaskItem[]> {
+    const items: TaskItem[] = [];
+
+    // v1: tasks/ subdirectory
     const tasksDir = vscode.Uri.joinPath(this.mbRoot, "tasks");
     try {
       const entries = await vscode.workspace.fs.readDirectory(tasksDir);
-      const items: TaskItem[] = [];
-
       for (const [name, type] of entries) {
         if (type !== vscode.FileType.File || name === "_index.md" || !name.endsWith(".md")) {
           continue;
         }
-
         const fileUri = vscode.Uri.joinPath(tasksDir, name);
         const content = Buffer.from(
           await vscode.workspace.fs.readFile(fileUri),
         ).toString("utf-8");
-
-        const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-        const status = statusMatch?.[1]?.trim() ?? "Unknown";
+        const status = extractStatus(content);
         const label = name.replace(".md", "");
-
         items.push(new TaskItem(label, fileUri, status));
       }
-
-      return items;
     } catch {
-      return [];
+      // tasks/ directory doesn't exist — try flat layout
+    }
+
+    // v2: flat TASK-*.md files in memory-bank root
+    try {
+      const entries = await vscode.workspace.fs.readDirectory(this.mbRoot);
+      for (const [name, type] of entries) {
+        if (type !== vscode.FileType.File || !name.match(/^TASK-\d+.*\.md$/)) {
+          continue;
+        }
+        // Skip if we already found this in tasks/ subdir
+        const label = name.replace(".md", "");
+        if (items.some((i) => i.label === label)) {
+          continue;
+        }
+        const fileUri = vscode.Uri.joinPath(this.mbRoot, name);
+        const content = Buffer.from(
+          await vscode.workspace.fs.readFile(fileUri),
+        ).toString("utf-8");
+        const status = extractStatus(content);
+        items.push(new TaskItem(label, fileUri, status));
+      }
+    } catch {
+      // ignore
+    }
+
+    return items;
+  }
+}
+
+/** Extract status from YAML frontmatter or **Status:** metadata. */
+function extractStatus(content: string): string {
+  // Try YAML frontmatter first
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (fmMatch) {
+    const statusLine = fmMatch[1].match(/^status\s*:\s*(.+)$/m);
+    if (statusLine) {
+      return statusLine[1].trim().replace(/^["']|["']$/g, "");
     }
   }
+
+  // Fall back to **Status:** pattern
+  const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
+  return statusMatch?.[1]?.trim() ?? "Unknown";
 }
 
 class TaskItem extends vscode.TreeItem {

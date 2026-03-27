@@ -24,46 +24,95 @@ When Memory Bank MCP tools are available, **always prefer them** over reading ra
 | Operation | MCP Tool (preferred) | File Fallback |
 |-----------|---------------------|---------------|
 | Load session context | `memory_recall` (token-budgeted) | Read each `.md` file manually |
-| Search across memories | `memory_search` (full-text FTS5) | Grep through files |
-| Query tasks/decisions | `memory_query` (by type, status, date) | Read `_index.md` files |
+| Search across memories | `memory_search` (full-text MiniSearch) | Grep through files |
+| Query tasks/decisions | `memory_query` (by type, status, date) | Read `_index.md` or scan files |
 | Track relationships | `memory_link` / `memory_unlink` / `memory_update_link` | Add references in markdown |
 | Explore connections | `memory_graph` (BFS traversal) | Read files and follow references |
 | Discover data model | `memory_schema` | Inspect folder structure |
 | Create new task | `memory_create_task` (auto-ID, formatting) | Create file manually |
+| Create new note | `memory_create_note` (auto-ID, YAML frontmatter) | Create file manually |
+| Create new decision | `memory_create_decision` (auto-ID, formatting) | Create file manually |
 | Update item status | `memory_update_status` (validated) | Edit Status field in file |
 | Save active context | `memory_save_context` (structured) | Edit activeContext.md |
+| View status dashboard | `memory_status` (computed aggregates) | Read progress.md |
+| Browse by tags | `memory_tags` (list/filter) | Search files manually |
+| Import decisions | `memory_import_decisions` | Copy files manually |
 
-The MCP tools provide structured, searchable, token-efficient access to the same data stored in the markdown files. MCP write tools (`memory_create_task`, `memory_update_status`, `memory_save_context`) handle validation, auto-formatting, and index updates. For other file changes, use Edit/Write tools directly on the markdown files.
+The MCP tools provide structured, searchable, token-efficient access to the same data stored in the markdown files. MCP write tools handle validation, auto-formatting, and index updates. For other file changes, use Edit/Write tools directly on the markdown files.
 
 If no MCP server is configured, fall back to reading files directly. All workflows below work with or without MCP.
 
 ## Memory Bank Structure
 
-```mermaid
-flowchart TD
-    PB[projectbrief.md] --> PC[productContext.md]
-    PB --> SP[systemPatterns.md]
-    PB --> TC[techContext.md]
-    PC --> AC[activeContext.md]
-    SP --> AC
-    TC --> AC
-    AC --> P[progress.md]
-    AC --> T[tasks/]
-    AC --> D[decisions/]
+The memory bank supports two directory layouts:
+
+### v2 Layout (flat — recommended for new projects)
+```
+memory-bank/
+├── projectbrief.md        ← project overview (the ONE source)
+├── activeContext.md        ← current focus, recent changes
+├── progress.md             ← what works, what remains
+├── TASK-001.md             ← task files (flat)
+├── ADR-0001.md             ← decision files (flat)
+├── NOTE-001.md             ← knowledge notes
+└── .mcp/                   ← tooling artifacts (gitignored)
+```
+
+### v1 Layout (subdirectories — backward compatible)
+```
+memory-bank/
+├── projectbrief.md
+├── productContext.md
+├── systemPatterns.md
+├── techContext.md
+├── activeContext.md
+├── progress.md
+├── tasks/
+│   ├── _index.md
+│   └── TASK-001-title.md
+└── decisions/
+    ├── _index.md
+    └── ADR-0001-title.md
+```
+
+Both layouts are fully supported by the MCP server and VS Code extension.
+
+### File Metadata Formats
+
+**v2 format (YAML frontmatter — recommended):**
+```markdown
+---
+type: task
+status: In Progress
+tags: [backend, auth]
+related: [ADR-0003, TASK-012]
+created: 2026-03-15
+updated: 2026-03-27
+---
+# TASK-014: Implement OAuth2 login flow
+```
+
+**v1 format (bold metadata — still supported):**
+```markdown
+# TASK-014: Implement OAuth2 login flow
+
+**Status:** In Progress
+**Added:** 2026-03-15
+**Updated:** 2026-03-27
 ```
 
 ### Core Files (Required)
 - **projectbrief.md** — Foundation document that shapes all other files. Defines project scope, goals, non-goals, and success criteria.
-- **productContext.md** — Why this project exists, problems it solves, UX goals.
 - **activeContext.md** — Current work focus, recent changes, active decisions, next steps.
+- **progress.md** — What works, what remains, known issues, overall status.
+
+### Additional Context Files
+- **productContext.md** — Why this project exists, problems it solves, UX goals.
 - **systemPatterns.md** — Architecture, design patterns, component relationships.
 - **techContext.md** — Technologies, dev setup, constraints, dependencies.
-- **progress.md** — What works, what remains, known issues, overall status.
-- **tasks/** — Task management folder with index and individual task files.
-
-### Additional Context (as needed)
-- **decisions/** — Architectural Decision Records (ADRs) with immutable decision history.
-- Additional files/folders for complex features, API docs, integration specs, testing strategies, or deployment procedures.
+- **tasks/** or flat `TASK-*.md` — Task management.
+- **decisions/** or flat `ADR-*.md` — Architectural Decision Records.
+- **NOTE-*.md** — Atomic knowledge notes (v2).
 
 ## Core Workflows
 
@@ -89,29 +138,14 @@ flowchart TD
     Execute --> Link[Create Links via MCP\nif available]
 ```
 
-### Task Management
-```mermaid
-flowchart TD
-    Start[New Task] --> Create[Create Task File]
-    Create --> Think[Document Thought Process]
-    Think --> Plan[Create Implementation Plan]
-    Plan --> UpdateIndex[Update tasks/_index.md]
-    UpdateIndex --> Execute[Execute Steps]
-    Execute --> Progress[Log Progress]
-    Progress --> Check{More Steps?}
-    Check -->|Yes| Execute
-    Check -->|No| Complete[Mark Complete]
-    Complete --> UpdateIndex2[Update Index]
-```
-
 ## Automatic Memory Bank Updates
 
 **These are mandatory — do not wait for the user to ask.**
 
 ### When to Create ADRs Automatically
-Create an ADR via `memory_create_task` or direct file creation whenever:
+Create an ADR via `memory_create_decision` or direct file creation whenever:
 - A significant architectural or design decision is made or changed
-- A critical misunderstanding is corrected (e.g., platform identity, config locations)
+- A critical misunderstanding is corrected
 - A technology, pattern, or approach is chosen over alternatives
 - A previous decision is reversed or superseded
 
@@ -119,56 +153,50 @@ Create an ADR via `memory_create_task` or direct file creation whenever:
 - **Create a task** when starting a non-trivial block of work (multi-step, multi-file)
 - **Update task status** via `memory_update_status` when work is completed, abandoned, or blocked
 - **Update task subtasks** when scope changes during implementation
-- **Update `_index.md`** whenever tasks or decisions are created or change status
 
 ### When to Update Context Automatically
 - **Update `activeContext.md`** via `memory_save_context` at the end of each significant work block
-- **Update `progress.md`** when features are completed or issues are discovered
+- **Check `memory_status`** to see computed progress dashboard (replaces manual progress.md updates)
 
 ### General Documentation Updates
-
-Updates also happen when:
 - Discovering new project patterns
 - After significant implementation changes
 - When user explicitly requests "update memory bank"
 - When context needs clarification
 
-```mermaid
-flowchart TD
-    Start[Update Trigger] --> Review[Review ALL Files]
-    Review --> State[Document Current State]
-    State --> Next[Clarify Next Steps]
-    Next --> Update[Update Files]
-```
-
-When user says **"update memory bank"**, I must review ALL memory bank files, paying special attention to activeContext.md, progress.md, and the tasks/ folder. After updating files, use `memory_link` to record relationships between tasks, decisions, and context files if MCP is available.
-
-## Project Intelligence
-
-The instructions file serves as a learning journal, capturing:
-- Critical implementation patterns and preferences
-- Known challenges and workarounds
-- Decision evolution and rationale
-- Tool and workflow preferences
-
-```mermaid
-flowchart TD
-    Learn[Discover Pattern] --> Validate[Validate with User]
-    Validate --> Record[Record in Instructions]
-    Record --> Apply[Apply in Future Sessions]
-    Apply --> Learn
-```
-
 ## Tasks Management
 
-### Task File Structure
-The `tasks/` folder contains:
-- **_index.md** — Master index of all tasks, organized by status (In Progress, Pending, Completed, Abandoned)
-- **TASKID-taskname.md** — Individual task files
-
-### Individual Task Template
+### Task File Structure (v2 with YAML frontmatter)
 ```markdown
-# TASKID: Task Title
+---
+type: task
+status: Pending
+tags: [feature, backend]
+created: 2026-03-27
+updated: 2026-03-27
+---
+# TASK-NNN: Task Title
+
+## Request
+[What the user asked for]
+
+## Plan
+1. Step one
+2. Step two
+
+## Sub-tasks
+- [ ] Subtask description [priority:: high]
+- [ ] Another subtask
+
+## Progress Log
+
+### 2026-03-27
+[What was done]
+```
+
+### Task File Structure (v1 — still supported)
+```markdown
+# TASK-NNN: Task Title
 
 **Status:** Pending | In Progress | Completed | Blocked | Abandoned
 **Added:** YYYY-MM-DD
@@ -177,39 +205,47 @@ The `tasks/` folder contains:
 ## Original Request
 [What the user asked for]
 
-## Thought Process
-[Reasoning, analysis, discussion of approach]
-
 ## Implementation Plan
 1. Step one
 2. Step two
-3. Step three
-
-## Progress Tracking
-
-| ID | Description | Status | Updated | Notes |
-|----|-------------|--------|---------|-------|
-| 1.1 | Subtask | Pending | | |
 
 ## Progress Log
-
 ### YYYY-MM-DD
-[Narrative entry about what was done]
+[What was done]
 ```
 
 ### Task Commands
-- **add/create task** — Creates a new task file with unique ID, documents thought process, creates implementation plan, updates index. Use `memory_link` to connect tasks to related ADRs if MCP is available.
-- **update task [ID]** — Adds progress log entry, updates subtask statuses, syncs index
-- **show tasks [filter]** — Use `memory_query` (type: task, status filter) if MCP is available, otherwise read `tasks/_index.md`. Filters: `all`, `active`, `pending`, `completed`, `blocked`, `recent`, `tag:[name]`, `priority:[level]`
+- **add/create task**: Use `memory_create_task`, or create file manually. Use `memory_link` to connect to related ADRs.
+- **update task [ID]**: Log progress, update statuses via `memory_update_status`
+- **show tasks [filter]**: Use `memory_query` (type: task, status filter) or `memory_status` for dashboard
 
 ## Decisions Management
 
-### Decision Record Structure
-The `decisions/` folder follows the same pattern as `tasks/`:
-- **_index.md** — Decision log organized by status (Accepted, Proposed, Deprecated, Superseded)
-- **ADR-NNNN-title.md** — Individual decision records (immutable once accepted)
+### Decision Record Structure (v2 with YAML frontmatter)
+```markdown
+---
+type: decision
+status: Proposed
+created: 2026-03-27
+---
+# ADR-NNNN: Title
 
-### Decision Record Template
+## Context
+[Why this decision is needed]
+
+## Decision
+[What was decided]
+
+## Alternatives Considered
+### Alternative 1
+- Considered because: ...
+- Rejected because: ...
+
+## Consequences
+[What follows from this decision]
+```
+
+### Decision Record Structure (v1 — still supported)
 ```markdown
 # ADR-NNNN: Title
 
@@ -225,13 +261,31 @@ The `decisions/` folder follows the same pattern as `tasks/`:
 
 ## Alternatives Considered
 ### Alternative 1
-- Pro: ...
-- Con: ...
-- Rejected because: ...
+Considered because... Rejected because...
 
 ## Consequences
-[What follows from this decision]
+[What follows]
 ```
+
+## Knowledge Notes (v2)
+
+### Note File Structure
+```markdown
+---
+type: note
+tags: [api-patterns, backend]
+related: [ADR-0003, TASK-012]
+created: 2026-03-27
+updated: 2026-03-27
+---
+# NOTE-NNN: Topic Title
+
+Content about this specific topic or pattern.
+
+References [[ADR-0003]] for the relevant decision.
+```
+
+Notes replace the v1 approach of large monolithic files (`productContext.md`, `systemPatterns.md`, `techContext.md`). Each note captures one atomic concept, linked to others via wikilinks and tags.
 
 ---
 

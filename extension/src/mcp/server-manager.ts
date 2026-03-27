@@ -78,13 +78,10 @@ export class McpServerManager implements vscode.Disposable {
     if (create) {
       const bootstrap = new McpServerBootstrap(this.extensionPath);
       if (!bootstrap.isReady()) {
-        const installed = await bootstrap.install();
-        if (!installed) {
-          vscode.window.showErrorMessage(
-            "Failed to install MCP server dependencies.",
-          );
-          return;
-        }
+        vscode.window.showErrorMessage(
+          "MCP server not found. The extension may need to be reinstalled.",
+        );
+        return;
       }
       await generateMcpConfigs(workspaceRoot, bootstrap.getServerPath());
       this.setStatus("configured");

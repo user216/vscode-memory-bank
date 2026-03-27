@@ -1,43 +1,35 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDb } from "../db.js";
+import { getStore, generateExcerpt } from "../index-store.js";
 import type { SearchResult } from "../types.js";
 
 export function registerMemorySearch(server: McpServer): void {
   server.tool(
     "memory_search",
-    "Full-text search across all memory bank content using FTS5. Returns matching items with highlighted excerpts (>>> / <<<). Use this for keyword/phrase searches. For filtering by status or date, use memory_query instead.",
+    "Full-text search across all memory bank content using MiniSearch. Returns matching items with highlighted excerpts (>>> / <<<). Use this for keyword/phrase searches. For filtering by status or date, use memory_query instead.",
     {
-      query: z.string().describe("FTS5 query string. Examples: 'authentication', 'oauth AND google', 'deploy*', 'NOT deprecated'. Supports AND, OR, NOT, prefix*, \"exact phrase\". Case-insensitive."),
-      type: z.enum(["core", "task", "decision"]).optional().describe("Filter by item type: 'core' (context files), 'task' (TASK-NNN), 'decision' (ADR-NNNN)"),
+      query: z.string().describe("Search query string. Examples: 'authentication', 'oauth google', 'deploy'. Supports prefix matching (auto-enabled), fuzzy matching, and multi-term search. Case-insensitive."),
+      type: z.enum(["core", "task", "decision", "note", "structure"]).optional().describe("Filter by item type: 'core' (context files), 'task' (TASK-NNN), 'decision' (ADR-NNNN), 'note' (NOTE-NNN)"),
       limit: z.number().min(1).max(50).optional().describe("Maximum results (default 10)"),
     },
     async ({ query, type, limit }) => {
-      const db = getDb();
+      const store = getStore();
       const maxResults = limit ?? 10;
 
-      let sql = `
-        SELECT
-          items_fts.id,
-          items_fts.title,
-          items_fts.type,
-          snippet(items_fts, 2, '>>>', '<<<', '...', 32) as excerpt
-        FROM items_fts
-        WHERE items_fts MATCH @query
-      `;
-
-      const params: Record<string, string | number> = { query };
-
-      if (type) {
-        sql += ` AND items_fts.type = @type`;
-        params.type = type;
-      }
-
-      sql += ` ORDER BY rank LIMIT @limit`;
-      params.limit = maxResults;
-
       try {
-        const results = db.prepare(sql).all(params) as SearchResult[];
+        let results = store.search.search(query, {
+          boost: { title: 3 },
+          fuzzy: 0.2,
+          prefix: true,
+        });
+
+        // Filter by type if specified
+        if (type) {
+          results = results.filter((r) => r.type === type);
+        }
+
+        // Limit results
+        results = results.slice(0, maxResults);
 
         if (results.length === 0) {
           return {
@@ -46,7 +38,11 @@ export function registerMemorySearch(server: McpServer): void {
         }
 
         const output = results
-          .map((r) => `**${r.id}** (${r.type}) — ${r.title}\n${r.excerpt}`)
+          .map((r) => {
+            const item = store.items.get(r.id);
+            const excerpt = item ? generateExcerpt(item.content, query) : "";
+            return `**${r.id}** (${r.type}) — ${r.title}\n${excerpt}`;
+          })
           .join("\n\n---\n\n");
 
         return {
@@ -62,7 +58,7 @@ export function registerMemorySearch(server: McpServer): void {
           content: [
             {
               type: "text" as const,
-              text: `Search error: ${err instanceof Error ? err.message : String(err)}. Check FTS5 syntax — use AND/OR/NOT between terms, prefix* for wildcards, "double quotes" for exact phrases.`,
+              text: `Search error: ${err instanceof Error ? err.message : String(err)}.`,
             },
           ],
         };
