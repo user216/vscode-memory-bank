@@ -1,10 +1,10 @@
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { syncSingleFile } from "../sync.js";
+import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath, slugify, getNextId, updateTaskIndex } from "./shared-utils.js";
 export function registerMemoryCreateTask(server) {
-    server.tool("memory_create_task", "Create a new task in the memory bank with proper formatting, auto-generated TASK-NNN ID, and index update. Creates a markdown file in memory-bank/tasks/ and syncs to SQLite. Initial status is always Pending — use memory_update_status to change it later.", {
+    server.tool("memory_create_task", "Create a new task in the memory bank with proper formatting, auto-generated TASK-NNN ID, and index update. Creates a markdown file in memory-bank/tasks/ and syncs to the in-memory index. Initial status is always Pending — use memory_update_status to change it later.", {
         title: z.string().describe("Task title — short, descriptive (e.g. 'Implement user authentication', 'Fix login redirect bug')"),
         request: z.string().describe("Original request or description of what needs to be done. Can be multi-line."),
         plan: z
@@ -50,8 +50,9 @@ export function registerMemoryCreateTask(server) {
         md += `## Progress Log\n\n### ${today}\nTask created.\n`;
         fs.writeFileSync(filePath, md);
         updateTaskIndex(tasksDir);
-        // Sync to SQLite
-        syncSingleFile(mbPath, filePath);
+        // Sync to in-memory index
+        const store = getStore();
+        reindexFile(store, filePath);
         return {
             content: [
                 {

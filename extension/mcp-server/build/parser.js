@@ -1,7 +1,9 @@
 import * as path from "node:path";
+import matter from "gray-matter";
 const METADATA_RE = /\*\*(\w[\w\s]*?):\*\*\s*(.+)/g;
 const CROSS_REF_RE = /\b(ADR-\d{4}|TASK-\d{3})\b/g;
-const HEADING_RE = /^##\s+(.+)$/gm;
+const WIKILINK_RE = /\[\[([^\]]+)\]\]/g;
+const TAG_RE = /#([a-zA-Z][\w-]*)/g;
 export function deriveId(filePath) {
     const stem = path.basename(filePath, ".md");
     // TASK-001-initial-scaffolding → TASK-001
@@ -12,14 +14,34 @@ export function deriveId(filePath) {
     const adrMatch = stem.match(/^(ADR-\d{4})/);
     if (adrMatch)
         return adrMatch[1];
+    // NOTE-001-some-title → NOTE-001
+    const noteMatch = stem.match(/^(NOTE-\d{3})/);
+    if (noteMatch)
+        return noteMatch[1];
     // projectbrief.md → projectbrief
     return stem;
 }
-export function deriveType(filePath) {
+export function deriveType(filePath, frontmatterType) {
+    // YAML frontmatter type takes precedence
+    if (frontmatterType) {
+        const validTypes = ["core", "task", "decision", "note", "structure"];
+        if (validTypes.includes(frontmatterType)) {
+            return frontmatterType;
+        }
+    }
+    // Path-based detection (v1 compat)
     if (filePath.includes("tasks/"))
         return "task";
     if (filePath.includes("decisions/"))
         return "decision";
+    // Filename-based detection (v2 flat directory)
+    const basename = path.basename(filePath);
+    if (basename.match(/^TASK-\d{3}/))
+        return "task";
+    if (basename.match(/^ADR-\d{4}/))
+        return "decision";
+    if (basename.match(/^NOTE-\d{3}/))
+        return "note";
     return "core";
 }
 export function deriveTitle(id, content) {
@@ -74,18 +96,73 @@ export function extractCrossRefs(content) {
     }
     return Array.from(refs);
 }
+export function extractWikilinks(content) {
+    const links = new Set();
+    let match;
+    WIKILINK_RE.lastIndex = 0;
+    while ((match = WIKILINK_RE.exec(content)) !== null) {
+        links.add(match[1].trim());
+    }
+    return Array.from(links);
+}
+export function extractInlineTags(content) {
+    const tags = new Set();
+    let match;
+    TAG_RE.lastIndex = 0;
+    while ((match = TAG_RE.exec(content)) !== null) {
+        tags.add(match[1]);
+    }
+    return Array.from(tags);
+}
 export function parseMarkdownFile(filePath, content) {
     const id = deriveId(filePath);
-    const type = deriveType(filePath);
-    const title = deriveTitle(id, content);
-    const metadata = extractMetadata(content);
-    const sections = extractSections(content);
-    const crossRefs = extractCrossRefs(content);
-    // Extract dates from metadata
-    const createdAt = metadata["Added"] || metadata["Date"] || null;
-    const updatedAt = metadata["Updated"] || metadata["Date"] || null;
-    // Extract status from metadata
-    const status = metadata["Status"] || null;
+    // Try YAML frontmatter first
+    let frontmatterData = {};
+    let bodyContent = content;
+    try {
+        const parsed = matter(content);
+        if (Object.keys(parsed.data).length > 0) {
+            frontmatterData = parsed.data;
+            bodyContent = parsed.content;
+        }
+    }
+    catch {
+        // Not valid frontmatter — use raw content
+    }
+    const type = deriveType(filePath, frontmatterData.type);
+    const title = deriveTitle(id, bodyContent);
+    // Extract metadata from both sources
+    const inlineMetadata = extractMetadata(bodyContent);
+    const metadata = { ...inlineMetadata };
+    // Merge frontmatter into metadata
+    for (const [key, value] of Object.entries(frontmatterData)) {
+        if (typeof value === "string") {
+            metadata[key] = value;
+        }
+    }
+    const sections = extractSections(bodyContent);
+    const crossRefs = extractCrossRefs(bodyContent);
+    const wikilinks = extractWikilinks(bodyContent);
+    // Tags: from frontmatter + inline
+    const frontmatterTags = Array.isArray(frontmatterData.tags)
+        ? frontmatterData.tags
+        : [];
+    const inlineTags = extractInlineTags(bodyContent);
+    const tags = [...new Set([...frontmatterTags, ...inlineTags])];
+    // Related: from frontmatter
+    const related = Array.isArray(frontmatterData.related)
+        ? frontmatterData.related
+        : [];
+    // Combine cross-refs with wikilinks for full reference list
+    const allRefs = [...new Set([...crossRefs, ...wikilinks])];
+    // Extract dates — frontmatter takes precedence
+    // gray-matter parses YAML dates as Date objects, so coerce to ISO date string
+    const fmCreated = frontmatterData.created;
+    const fmUpdated = frontmatterData.updated;
+    const createdAt = (fmCreated instanceof Date ? fmCreated.toISOString().slice(0, 10) : fmCreated) || metadata["Added"] || metadata["Date"] || null;
+    const updatedAt = (fmUpdated instanceof Date ? fmUpdated.toISOString().slice(0, 10) : fmUpdated) || metadata["Updated"] || metadata["Date"] || null;
+    // Extract status — frontmatter takes precedence
+    const status = frontmatterData.status || metadata["Status"] || null;
     return {
         id,
         type,
@@ -95,7 +172,9 @@ export function parseMarkdownFile(filePath, content) {
         content,
         metadata,
         sections,
-        crossRefs,
+        crossRefs: allRefs,
+        tags,
+        related,
         createdAt,
         updatedAt,
     };

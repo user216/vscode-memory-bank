@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getDb } from "../db.js";
+import { getStore } from "../index-store.js";
 const CHARS_PER_TOKEN = 3.5;
 // Priority order for "foundational" strategy
 const FOUNDATIONAL_ORDER = [
@@ -15,10 +15,10 @@ export function registerMemoryRecall(server) {
         budget: z.number().min(500).max(100000).optional().describe("Token budget (default 8000). ~4000 for quick orientation, ~8000 for working context, ~16000+ for deep review. Content is truncated to fit."),
         priority: z.enum(["foundational", "recent", "active"]).optional().describe("Priority strategy (default 'active'): 'foundational' = project overview first (projectbrief → productContext → systemPatterns → techContext → activeContext → progress), 'recent' = most recently updated items first, 'active' = current context + in-progress tasks + proposed decisions first"),
     }, async ({ budget, priority }) => {
-        const db = getDb();
+        const store = getStore();
         const tokenBudget = budget ?? 8000;
         const strategy = priority ?? "active";
-        const items = getOrderedItems(db, strategy);
+        const items = getOrderedItems(Array.from(store.items.values()), strategy);
         let totalTokens = 0;
         const sections = [];
         for (const item of items) {
@@ -50,12 +50,10 @@ export function registerMemoryRecall(server) {
         };
     });
 }
-function getOrderedItems(db, strategy) {
+function getOrderedItems(all, strategy) {
     switch (strategy) {
         case "foundational": {
-            const all = db.prepare("SELECT id, type, title, content, status, updated_at, created_at FROM items").all();
-            // Sort: core files in FOUNDATIONAL_ORDER first, then tasks, then decisions
-            return all.sort((a, b) => {
+            return [...all].sort((a, b) => {
                 const aIdx = FOUNDATIONAL_ORDER.indexOf(a.id);
                 const bIdx = FOUNDATIONAL_ORDER.indexOf(b.id);
                 if (aIdx !== -1 && bIdx !== -1)
@@ -72,20 +70,21 @@ function getOrderedItems(db, strategy) {
             });
         }
         case "recent": {
-            return db.prepare("SELECT id, type, title, content, status, updated_at, created_at FROM items ORDER BY COALESCE(updated_at, created_at, synced_at) DESC").all();
+            return [...all].sort((a, b) => {
+                const aDate = a.updatedAt || a.createdAt || "";
+                const bDate = b.updatedAt || b.createdAt || "";
+                return bDate.localeCompare(aDate);
+            });
         }
         case "active":
         default: {
-            const all = db.prepare("SELECT id, type, title, content, status, updated_at, created_at FROM items").all();
-            // activeContext first, then in-progress tasks, then recent decisions, then everything else
-            return all.sort((a, b) => {
+            return [...all].sort((a, b) => {
                 const aPriority = getActivePriority(a);
                 const bPriority = getActivePriority(b);
                 if (aPriority !== bPriority)
                     return aPriority - bPriority;
-                // Within same priority, sort by update date
-                const aDate = a.updated_at || a.created_at || "";
-                const bDate = b.updated_at || b.created_at || "";
+                const aDate = a.updatedAt || a.createdAt || "";
+                const bDate = b.updatedAt || b.createdAt || "";
                 return bDate.localeCompare(aDate);
             });
         }

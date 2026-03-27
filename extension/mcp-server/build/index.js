@@ -2,8 +2,7 @@
 import * as path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { initDb, closeDb } from "./db.js";
-import { syncAllFiles, watchMemoryBank } from "./sync.js";
+import { initStore, watchMemoryBank } from "./index-store.js";
 import { registerMemorySearch } from "./tools/memory-search.js";
 import { registerMemoryQuery } from "./tools/memory-query.js";
 import { registerMemoryRecall } from "./tools/memory-recall.js";
@@ -18,21 +17,21 @@ import { registerMemoryImportDecisions } from "./tools/memory-import-decisions.j
 import { registerMemoryUpdateStatus } from "./tools/memory-update-status.js";
 import { registerMemoryUpdateDecision } from "./tools/memory-update-decision.js";
 import { registerMemorySaveContext } from "./tools/memory-save-context.js";
+import { registerMemoryStatus } from "./tools/memory-status.js";
+import { registerMemoryTags } from "./tools/memory-tags.js";
+import { registerMemoryCreateNote } from "./tools/memory-create-note.js";
 const MEMORY_BANK_PATH = process.env.MEMORY_BANK_PATH || path.join(process.cwd(), "memory-bank");
 async function main() {
     console.error("vscode-memory-bank-mcp starting...");
     console.error(`Memory bank path: ${MEMORY_BANK_PATH}`);
-    // Initialize database
-    initDb(MEMORY_BANK_PATH);
-    // Sync markdown files to SQLite
-    const synced = syncAllFiles(MEMORY_BANK_PATH);
-    console.error(`Initial sync complete: ${synced} files`);
+    // Initialize in-memory index
+    const store = initStore(MEMORY_BANK_PATH);
     // Watch for file changes
-    const watcher = watchMemoryBank(MEMORY_BANK_PATH);
+    const watcher = watchMemoryBank(store);
     // Create MCP server
     const server = new McpServer({
         name: "vscode-memory-bank",
-        version: "1.0.0",
+        version: "2.0.0",
     });
     // Register all tools
     registerMemorySearch(server);
@@ -49,6 +48,9 @@ async function main() {
     registerMemoryUpdateStatus(server);
     registerMemoryUpdateDecision(server);
     registerMemorySaveContext(server);
+    registerMemoryStatus(server);
+    registerMemoryTags(server);
+    registerMemoryCreateNote(server);
     // Connect via stdio transport
     const transport = new StdioServerTransport();
     await server.connect(transport);
@@ -57,19 +59,16 @@ async function main() {
     process.on("SIGINT", () => {
         console.error("Shutting down...");
         watcher.close();
-        closeDb();
         process.exit(0);
     });
     process.on("SIGTERM", () => {
         console.error("Shutting down...");
         watcher.close();
-        closeDb();
         process.exit(0);
     });
 }
 main().catch((error) => {
     console.error("Fatal error:", error);
-    closeDb();
     process.exit(1);
 });
 //# sourceMappingURL=index.js.map

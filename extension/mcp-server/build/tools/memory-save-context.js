@@ -1,10 +1,10 @@
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { syncSingleFile } from "../sync.js";
+import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath } from "./shared-utils.js";
 export function registerMemorySaveContext(server) {
-    server.tool("memory_save_context", "Save the current active context to activeContext.md with proper structure. Overwrites the file with validated sections and syncs to SQLite. Call at end of session or when focus shifts to preserve working state.", {
+    server.tool("memory_save_context", "Save the current active context to activeContext.md with proper structure. Overwrites the file with validated sections and syncs to the in-memory index. Call at end of session or when focus shifts to preserve working state.", {
         current_focus: z
             .string()
             .describe("One-line summary of what the project is currently focused on (e.g. 'Implementing OAuth2 login flow')"),
@@ -57,8 +57,9 @@ export function registerMemorySaveContext(server) {
             md += "\n";
         }
         fs.writeFileSync(filePath, md);
-        // Sync to SQLite
-        syncSingleFile(mbPath, filePath);
+        // Sync to in-memory index
+        const store = getStore();
+        reindexFile(store, filePath);
         return {
             content: [
                 {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { syncSingleFile } from "../sync.js";
+import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath, slugify, getNextId, updateDecisionIndex, DECISION_STATUSES } from "./shared-utils.js";
 function parseFrontMatter(content) {
     const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
@@ -100,18 +100,19 @@ export function registerMemoryImportDecisions(server) {
     }, async ({ source_directory, preserve_content }) => {
         const mbPath = getMemoryBankPath();
         const decisionsDir = path.join(mbPath, "decisions");
+        const store = getStore();
         if (!fs.existsSync(decisionsDir)) {
             fs.mkdirSync(decisionsDir, { recursive: true });
         }
         const results = [];
         if (!source_directory) {
-            // Re-sync mode: read existing decisions and sync to SQLite
+            // Re-sync mode: read existing decisions and re-index
             const existingFiles = fs
                 .readdirSync(decisionsDir)
                 .filter((f) => f.match(/^ADR-\d{4}/) && f.endsWith(".md"));
             for (const f of existingFiles) {
                 const filePath = path.join(decisionsDir, f);
-                syncSingleFile(mbPath, filePath);
+                reindexFile(store, filePath);
                 const idMatch = f.match(/^(ADR-\d{4})/);
                 results.push(`Synced: ${idMatch ? idMatch[1] : f}`);
             }
@@ -120,7 +121,7 @@ export function registerMemoryImportDecisions(server) {
                 content: [
                     {
                         type: "text",
-                        text: `Re-synced ${results.length} existing decisions to SQLite.\n${results.join("\n")}`,
+                        text: `Re-synced ${results.length} existing decisions to index.\n${results.join("\n")}`,
                     },
                 ],
             };
@@ -207,7 +208,7 @@ export function registerMemoryImportDecisions(server) {
                 outputContent += `## Consequences\n_To be determined._\n`;
             }
             fs.writeFileSync(filePath, outputContent);
-            syncSingleFile(mbPath, filePath);
+            reindexFile(store, filePath);
             results.push(`Imported: ${path.basename(sourceFile)} → **${adrId}**: ${title}`);
         }
         updateDecisionIndex(decisionsDir);

@@ -1,12 +1,11 @@
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getDb } from "../db.js";
-import { syncSingleFile } from "../sync.js";
+import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath, updateDecisionIndex, updateTaskIndex, TASK_STATUSES, DECISION_STATUSES } from "./shared-utils.js";
 const ALL_STATUSES = [...TASK_STATUSES, ...DECISION_STATUSES];
 export function registerMemoryUpdateStatus(server) {
-    server.tool("memory_update_status", "Update the status of a task or decision in the memory bank. Validates status values against item type, updates the markdown file, regenerates the index, and syncs to SQLite. Optionally appends a timestamped progress log entry.", {
+    server.tool("memory_update_status", "Update the status of a task or decision in the memory bank. Validates status values against item type, updates the markdown file, regenerates the index, and syncs to the in-memory index. Optionally appends a timestamped progress log entry.", {
         id: z
             .string()
             .describe("Item ID to update (e.g. 'TASK-001', 'ADR-0001'). Must exist — use memory_query to find IDs."),
@@ -19,7 +18,7 @@ export function registerMemoryUpdateStatus(server) {
             .describe("Progress log entry to append with today's date (optional). E.g. 'Completed migration, all tests passing.'"),
     }, async ({ id, status, log_entry }) => {
         const mbPath = getMemoryBankPath();
-        const db = getDb();
+        const store = getStore();
         // Validate status
         if (!ALL_STATUSES.includes(status)) {
             return {
@@ -31,10 +30,8 @@ export function registerMemoryUpdateStatus(server) {
                 ],
             };
         }
-        // Find the item in the database
-        const item = db
-            .prepare("SELECT id, type, file_path, status FROM items WHERE id = ?")
-            .get(id);
+        // Find the item in the store
+        const item = store.items.get(id);
         if (!item) {
             return {
                 content: [
@@ -68,13 +65,13 @@ export function registerMemoryUpdateStatus(server) {
                 ],
             };
         }
-        const filePath = path.join(mbPath, item.file_path);
+        const filePath = path.join(mbPath, item.filePath);
         if (!fs.existsSync(filePath)) {
             return {
                 content: [
                     {
                         type: "text",
-                        text: `File not found: ${item.file_path}. Database may be out of sync.`,
+                        text: `File not found: ${item.filePath}. Index may be out of sync.`,
                     },
                 ],
             };
@@ -97,7 +94,7 @@ export function registerMemoryUpdateStatus(server) {
             }
         }
         fs.writeFileSync(filePath, content);
-        // Update the index
+        // Update the index file
         const parentDir = path.dirname(filePath);
         if (item.type === "task") {
             updateTaskIndex(parentDir);
@@ -105,8 +102,8 @@ export function registerMemoryUpdateStatus(server) {
         else if (item.type === "decision") {
             updateDecisionIndex(parentDir);
         }
-        // Sync to SQLite
-        syncSingleFile(mbPath, filePath);
+        // Sync to in-memory index
+        reindexFile(store, filePath);
         const oldStatus = item.status || "unknown";
         return {
             content: [

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getDb } from "../db.js";
+import { getStore, removeLinkFromStore, addLinkToStore } from "../index-store.js";
 export function registerMemoryUpdateLink(server) {
     server.tool("memory_update_link", "Update the relation type of an existing link between two memory bank items. Finds the link by source, target, and old relation, then changes the relation to the new value. Use memory_graph to find existing links before updating.", {
         source: z.string().describe("Source item ID (e.g. 'TASK-001', 'ADR-0002')."),
@@ -17,12 +17,10 @@ export function registerMemoryUpdateLink(server) {
                 ],
             };
         }
-        const db = getDb();
-        // Check if target relation already exists (would violate unique constraint)
-        const existing = db
-            .prepare("SELECT 1 FROM links WHERE source_id = @source AND target_id = @target AND relation = @new_relation")
-            .get({ source, target, new_relation });
-        if (existing) {
+        const store = getStore();
+        // Check if target relation already exists
+        const outLinks = store.outgoing.get(source) || [];
+        if (outLinks.some((l) => l.target === target && l.relation === new_relation)) {
             return {
                 content: [
                     {
@@ -32,10 +30,9 @@ export function registerMemoryUpdateLink(server) {
                 ],
             };
         }
-        const result = db
-            .prepare("UPDATE links SET relation = @new_relation WHERE source_id = @source AND target_id = @target AND relation = @old_relation")
-            .run({ source, target, old_relation, new_relation });
-        if (result.changes === 0) {
+        // Remove old link
+        const removed = removeLinkFromStore(store, source, target, old_relation);
+        if (!removed) {
             return {
                 content: [
                     {
@@ -45,6 +42,8 @@ export function registerMemoryUpdateLink(server) {
                 ],
             };
         }
+        // Add new link
+        addLinkToStore(store, source, target, new_relation);
         return {
             content: [
                 {
