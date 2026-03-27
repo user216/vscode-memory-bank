@@ -1,14 +1,7 @@
 import * as vscode from "vscode";
-import * as path from "node:path";
 
-const CORE_FILES = [
-  "projectbrief.md",
-  "productContext.md",
-  "systemPatterns.md",
-  "techContext.md",
-  "activeContext.md",
-  "progress.md",
-];
+// ADR-0015 §7: only projectbrief and README are expected v2 files
+const EXPECTED_FILES = ["projectbrief.md", "README.md"];
 
 export class MemoryBankTreeProvider
   implements vscode.TreeDataProvider<MemoryBankItem>
@@ -31,17 +24,43 @@ export class MemoryBankTreeProvider
   async getChildren(): Promise<MemoryBankItem[]> {
     const items: MemoryBankItem[] = [];
 
-    for (const filename of CORE_FILES) {
+    // Show expected files first (with missing warning if absent)
+    for (const filename of EXPECTED_FILES) {
       const fileUri = vscode.Uri.joinPath(this.mbRoot, filename);
       const exists = await fileExists(fileUri);
       const label = filename.replace(".md", "");
-      const item = new MemoryBankItem(
-        label,
-        fileUri,
-        exists,
-        vscode.TreeItemCollapsibleState.None,
+      items.push(
+        new MemoryBankItem(
+          label,
+          fileUri,
+          exists,
+          vscode.TreeItemCollapsibleState.None,
+        ),
       );
-      items.push(item);
+    }
+
+    // Dynamically show any other root-level .md files (legacy core files, custom files)
+    try {
+      const entries = await vscode.workspace.fs.readDirectory(this.mbRoot);
+      for (const [name, type] of entries) {
+        if (type !== vscode.FileType.File) continue;
+        if (!name.endsWith(".md")) continue;
+        if (EXPECTED_FILES.includes(name)) continue;
+        if (/^(TASK-|ADR-|NOTE-)/.test(name)) continue; // shown in other views
+
+        const fileUri = vscode.Uri.joinPath(this.mbRoot, name);
+        const label = name.replace(".md", "");
+        items.push(
+          new MemoryBankItem(
+            label,
+            fileUri,
+            true,
+            vscode.TreeItemCollapsibleState.None,
+          ),
+        );
+      }
+    } catch {
+      /* directory doesn't exist yet */
     }
 
     return items;

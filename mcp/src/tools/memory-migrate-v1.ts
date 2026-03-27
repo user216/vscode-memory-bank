@@ -2,14 +2,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getStore, reindexFile } from "../index-store.js";
+import { getStore, reindexFile, removeItemFromStore } from "../index-store.js";
 import { getMemoryBankPath } from "./shared-utils.js";
 import { deriveId } from "../parser.js";
 
 export function registerMemoryMigrateV1(server: McpServer): void {
   server.tool(
     "memory_migrate_v1",
-    "Detect and optionally migrate v1 layout artifacts (tasks/ and decisions/ subdirectories) to the flat v2 layout. Moves files to the memory-bank root, adds YAML frontmatter if missing, removes empty subdirectories. Use dry_run=true (default) to preview changes first.",
+    "Detect and optionally migrate v1 layout artifacts to the flat v2 layout. Moves files from tasks/ and decisions/ subdirectories to the memory-bank root, adds YAML frontmatter if missing, removes empty subdirectories, and deletes deprecated v1 core files (activeContext.md, progress.md, productContext.md, techContext.md, systemPatterns.md) per ADR-0015. Use dry_run=true (default) to preview changes first.",
     {
       dry_run: z
         .boolean()
@@ -89,6 +89,42 @@ export function registerMemoryMigrateV1(server: McpServer): void {
           } else {
             warnings.push(`Directory ${dir}/ not empty after migration (${remaining.length} files remain)`);
           }
+        }
+      }
+
+      // Step 6: Detect and delete deprecated v1 core files (ADR-0015 §7)
+      const DEPRECATED_CORE_FILES = [
+        "activeContext.md",
+        "progress.md",
+        "productContext.md",
+        "techContext.md",
+        "systemPatterns.md",
+      ];
+
+      for (const filename of DEPRECATED_CORE_FILES) {
+        const filePath = path.join(mbPath, filename);
+        if (!fs.existsSync(filePath)) continue;
+
+        if (dry_run) {
+          actions.push(`Delete deprecated: ${filename} (replaced by tasks/notes/memory_status in v2)`);
+        } else {
+          const id = filename.replace(".md", "");
+          if (store.items.has(id)) {
+            removeItemFromStore(store, id);
+          }
+          fs.unlinkSync(filePath);
+          actions.push(`Deleted deprecated: ${filename}`);
+        }
+      }
+
+      // Also delete root-level _index.md if present
+      const rootIndex = path.join(mbPath, "_index.md");
+      if (fs.existsSync(rootIndex)) {
+        if (dry_run) {
+          actions.push("Delete: _index.md (no longer used in v2)");
+        } else {
+          fs.unlinkSync(rootIndex);
+          actions.push("Deleted: _index.md");
         }
       }
 

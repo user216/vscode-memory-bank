@@ -86,30 +86,34 @@ export class KnowledgeGraphPanel {
     const edges: GraphEdge[] = [];
     const itemsById = new Map<string, GraphNode>();
 
-    // Scan core files
-    const coreFiles = [
-      "projectbrief.md",
-      "productContext.md",
-      "systemPatterns.md",
-      "techContext.md",
-      "activeContext.md",
-      "progress.md",
-    ];
+    // Dynamically scan all root-level .md files (ADR-0015: no hardcoded core file list)
+    try {
+      const entries = await vscode.workspace.fs.readDirectory(this.mbRoot);
+      for (const [name, fileType] of entries) {
+        if (fileType !== vscode.FileType.File || !name.endsWith(".md")) continue;
 
-    for (const filename of coreFiles) {
-      const id = filename.replace(".md", "");
-      const uri = vscode.Uri.joinPath(this.mbRoot, filename);
-      try {
-        await vscode.workspace.fs.stat(uri);
-        const node: GraphNode = { id, type: "core", title: id };
+        const id = this.deriveId(name);
+        const uri = vscode.Uri.joinPath(this.mbRoot, name);
+        const content = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString("utf-8");
+        const titleMatch = content.match(/^#\s+(.+)/m);
+        const title = titleMatch?.[1] ?? id;
+
+        // Classify type from filename
+        let type: string;
+        if (/^TASK-\d+/.test(name)) type = "task";
+        else if (/^ADR-\d+/.test(name)) type = "decision";
+        else if (/^NOTE-\d+/.test(name)) type = "note";
+        else if (name === "projectbrief.md") type = "core";
+        else if (name === "README.md") type = "structure";
+        else type = "note";
+
+        const node: GraphNode = { id, type, title };
         nodes.push(node);
         itemsById.set(id, node);
-      } catch {
-        // file missing
       }
-    }
+    } catch { /* directory doesn't exist */ }
 
-    // Scan tasks
+    // v1 backward compat: scan tasks/ subdir
     const tasksDir = vscode.Uri.joinPath(this.mbRoot, "tasks");
     try {
       const taskEntries = await vscode.workspace.fs.readDirectory(tasksDir);
@@ -118,18 +122,16 @@ export class KnowledgeGraphPanel {
         const uri = vscode.Uri.joinPath(tasksDir, name);
         const content = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString("utf-8");
         const id = this.deriveId(name);
+        if (itemsById.has(id)) continue; // skip if already found in root
         const titleMatch = content.match(/^#\s+(.+)/m);
         const title = titleMatch?.[1] ?? id;
         const node: GraphNode = { id, type: "task", title };
         nodes.push(node);
         itemsById.set(id, node);
-
-        // Extract cross-references
-        this.extractRefs(content, id, itemsById, edges);
       }
     } catch { /* no tasks dir */ }
 
-    // Scan decisions
+    // v1 backward compat: scan decisions/ subdir
     const decisionsDir = vscode.Uri.joinPath(this.mbRoot, "decisions");
     try {
       const decEntries = await vscode.workspace.fs.readDirectory(decisionsDir);
@@ -138,27 +140,34 @@ export class KnowledgeGraphPanel {
         const uri = vscode.Uri.joinPath(decisionsDir, name);
         const content = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString("utf-8");
         const id = this.deriveId(name);
+        if (itemsById.has(id)) continue;
         const titleMatch = content.match(/^#\s+(.+)/m);
         const title = titleMatch?.[1] ?? id;
         const node: GraphNode = { id, type: "decision", title };
         nodes.push(node);
         itemsById.set(id, node);
-
-        this.extractRefs(content, id, itemsById, edges);
       }
     } catch { /* no decisions dir */ }
 
-    // Now extract refs from core files too
-    for (const filename of coreFiles) {
-      const uri = vscode.Uri.joinPath(this.mbRoot, filename);
+    // Extract cross-references from all nodes
+    for (const node of nodes) {
+      const uri = this.resolveUri(node);
+      if (!uri) continue;
       try {
         const content = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString("utf-8");
-        const id = filename.replace(".md", "");
-        this.extractRefs(content, id, itemsById, edges);
+        this.extractRefs(content, node.id, itemsById, edges);
       } catch { /* skip */ }
     }
 
     return { nodes, edges };
+  }
+
+  private resolveUri(node: GraphNode): vscode.Uri | null {
+    // v2 flat layout: all files at root
+    if (/^TASK-\d+$/.test(node.id)) return vscode.Uri.joinPath(this.mbRoot, `${node.id}.md`);
+    if (/^ADR-\d+$/.test(node.id)) return vscode.Uri.joinPath(this.mbRoot, `${node.id}.md`);
+    if (/^NOTE-\d+$/.test(node.id)) return vscode.Uri.joinPath(this.mbRoot, `${node.id}.md`);
+    return vscode.Uri.joinPath(this.mbRoot, `${node.id}.md`);
   }
 
   private deriveId(filename: string): string {
@@ -215,6 +224,8 @@ export class KnowledgeGraphPanel {
   <div><span class="dot" style="background:#4fc1ff"></span> Core</div>
   <div><span class="dot" style="background:#6a9955"></span> Task</div>
   <div><span class="dot" style="background:#dcdcaa"></span> Decision</div>
+  <div><span class="dot" style="background:#c586c0"></span> Note</div>
+  <div><span class="dot" style="background:#569cd6"></span> Structure</div>
 </div>
 <div id="tooltip"></div>
 <script>
@@ -233,7 +244,7 @@ function resize() {
 resize();
 window.addEventListener('resize', () => { resize(); });
 
-const COLORS = { core: '#4fc1ff', task: '#6a9955', decision: '#dcdcaa' };
+const COLORS = { core: '#4fc1ff', task: '#6a9955', decision: '#dcdcaa', note: '#c586c0', structure: '#569cd6' };
 const RADIUS = 22;
 
 // Position nodes in a force-directed-ish layout using initial circle placement + iterations
@@ -386,11 +397,9 @@ canvas.addEventListener('mouseup', () => { dragging = null; });
 canvas.addEventListener('dblclick', (e) => {
   const n = hitTest(e.offsetX, e.offsetY);
   if (!n) return;
-  let p;
-  if (n.type === 'core') p = n.id + '.md';
-  else if (n.type === 'task') p = 'tasks/' + n.id + '.md';
-  else if (n.type === 'decision') p = 'decisions/' + n.id + '.md';
-  if (p) vscode.postMessage({ command: 'openFile', path: p });
+  // v2 flat layout: all files at root
+  const p = n.id + '.md';
+  vscode.postMessage({ command: 'openFile', path: p });
 });
 </script>
 </body>

@@ -31,7 +31,7 @@ export function registerMemorySchema(server: McpServer): void {
 
       const schema = {
         itemTypes: {
-          core: "Narrative context files (projectbrief, productContext, systemPatterns, techContext, activeContext, progress)",
+          core: "Project overview file (projectbrief.md). Legacy v1 context files are classified as 'note' if present.",
           task: "Task files with status lifecycle: Pending → In Progress → Completed / Abandoned",
           decision: "ADR files with status lifecycle: Proposed → Accepted → Deprecated / Superseded / Rejected",
           note: "General-purpose notes with YAML frontmatter and tags",
@@ -58,7 +58,7 @@ export function registerMemorySchema(server: McpServer): void {
           memory_import_decisions: "Import ADR files from an external directory or re-sync existing decisions",
           memory_update_status: "Update task/decision status with validation and optional log entry",
           memory_update_decision: "Update content of an existing ADR (title, context, decision, alternatives, consequences)",
-          memory_save_context: "Save activeContext.md with structured sections (focus, changes, decisions, next steps)",
+          memory_save_context: "[DEPRECATED] Formerly saved activeContext.md. Now appends progress log to most recent in-progress task. Use memory_update_status with log_entry instead.",
           memory_status: "Computed project status: task/decision counts by status, tag cloud",
           memory_tags: "List all tags with item counts, or list items with a specific tag",
           memory_bulk_update_status: "Update status of multiple tasks/decisions in a single call with partial success reporting",

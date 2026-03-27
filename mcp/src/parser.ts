@@ -45,7 +45,11 @@ export function deriveType(filePath: string, frontmatterType?: string): ItemType
   if (basename.match(/^ADR-\d{4}/)) return "decision";
   if (basename.match(/^NOTE-\d{3}/)) return "note";
 
-  return "core";
+  // ADR-0015 §7: only projectbrief is "core"; README is "structure"; all others are "note"
+  const stem = basename.replace(/\.md$/, "");
+  if (stem === "projectbrief") return "core";
+  if (stem === "README") return "structure";
+  return "note";
 }
 
 export function deriveTitle(id: string, content: string): string {

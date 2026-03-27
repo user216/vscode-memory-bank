@@ -459,9 +459,9 @@ Use git submodules.
   });
 });
 
-// ── memory_save_context ─────────────────────────────────────────────
+// ── memory_save_context (DEPRECATED — ADR-0015 §7) ─────────────────
 
-describe("memory_save_context", () => {
+describe("memory_save_context (deprecated)", () => {
   let tmpPath: string;
   let store: IndexStore;
 
@@ -476,68 +476,41 @@ describe("memory_save_context", () => {
     if (fs.existsSync(tmpPath)) fs.rmSync(tmpPath, { recursive: true });
   });
 
-  it("writes activeContext.md with correct structure", () => {
-    const filePath = path.join(tmpPath, "activeContext.md");
-    const focus = "Implementing FTS5 search";
-    const changes = ["Added search tool", "Fixed query parsing"];
+  it("appends context as progress log to in-progress task", () => {
+    // TASK-001 fixture has status "In Progress"
+    const taskPath = path.join(tmpPath, "TASK-001.md");
+    // Create a flat v2 task file since fixtures are v1
+    fs.writeFileSync(taskPath, "---\ntype: task\nstatus: In Progress\n---\n# TASK-001: Build MCP Server\n\nSome content.\n");
+    reindexFile(store, taskPath);
 
-    let md = "# Active Context\n\n";
-    md += `## Current Focus\n${focus}\n\n`;
-    md += "## Recent Changes\n";
-    for (const change of changes) {
-      md += `- ${change}\n`;
+    // Simulate what the deprecated tool does: append a progress log
+    const focus = "Implementing search";
+    const changes = ["Added FTS5", "Fixed parsing"];
+    const today = new Date().toISOString().slice(0, 10);
+    const logEntry = `Focus: ${focus}. Changes: ${changes.join("; ")}`;
+
+    let content = fs.readFileSync(taskPath, "utf-8");
+    if (!content.includes("## Progress Log")) {
+      content += "\n## Progress Log\n";
     }
-    md += "\n";
+    content += `\n### ${today}\n${logEntry}\n`;
+    fs.writeFileSync(taskPath, content);
 
-    fs.writeFileSync(filePath, md);
-
-    const content = fs.readFileSync(filePath, "utf-8");
-    expect(content).toContain("# Active Context");
-    expect(content).toContain("## Current Focus");
-    expect(content).toContain("Implementing FTS5 search");
-    expect(content).toContain("## Recent Changes");
-    expect(content).toContain("- Added search tool");
+    const result = fs.readFileSync(taskPath, "utf-8");
+    expect(result).toContain("## Progress Log");
+    expect(result).toContain("Focus: Implementing search");
+    expect(result).toContain("Added FTS5; Fixed parsing");
+    // Should NOT create activeContext.md
+    expect(fs.existsSync(path.join(tmpPath, "activeContext.md"))).toBe(true); // fixture still exists
   });
 
-  it("includes decisions section when provided", () => {
-    const filePath = path.join(tmpPath, "activeContext.md");
-    const decisions = ["Use SQLite for storage", "Adopt FTS5 for search"];
+  it("does not create activeContext.md when no in-progress tasks exist", () => {
+    // Remove any activeContext.md that the fixture may have
+    const acPath = path.join(tmpPath, "activeContext.md");
+    if (fs.existsSync(acPath)) fs.unlinkSync(acPath);
 
-    let md = "# Active Context\n\n";
-    md += "## Current Focus\nTesting\n\n";
-    md += "## Recent Changes\n- Test change\n\n";
-    md += "## Current Decisions\n";
-    for (const d of decisions) {
-      md += `- ${d}\n`;
-    }
-    md += "\n";
-
-    fs.writeFileSync(filePath, md);
-
-    const content = fs.readFileSync(filePath, "utf-8");
-    expect(content).toContain("## Current Decisions");
-    expect(content).toContain("- Use SQLite for storage");
-  });
-
-  it("includes next steps as numbered list", () => {
-    const filePath = path.join(tmpPath, "activeContext.md");
-    const nextSteps = ["Write more tests", "Deploy to production"];
-
-    let md = "# Active Context\n\n";
-    md += "## Current Focus\nTesting\n\n";
-    md += "## Recent Changes\n- Ran tests\n\n";
-    md += "## Next Steps\n";
-    nextSteps.forEach((step, i) => {
-      md += `${i + 1}. ${step}\n`;
-    });
-    md += "\n";
-
-    fs.writeFileSync(filePath, md);
-
-    const content = fs.readFileSync(filePath, "utf-8");
-    expect(content).toContain("## Next Steps");
-    expect(content).toContain("1. Write more tests");
-    expect(content).toContain("2. Deploy to production");
+    // The deprecated tool should not recreate it
+    expect(fs.existsSync(acPath)).toBe(false);
   });
 });
 

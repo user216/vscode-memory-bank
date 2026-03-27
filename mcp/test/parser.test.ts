@@ -44,10 +44,24 @@ describe("deriveType", () => {
     expect(deriveType("decisions/ADR-0001-foo.md")).toBe("decision");
   });
 
-  it('returns "core" for root-level files', () => {
+  it('returns "core" only for projectbrief (ADR-0015 §7)', () => {
     expect(deriveType("projectbrief.md")).toBe("core");
-    expect(deriveType("activeContext.md")).toBe("core");
-    expect(deriveType("progress.md")).toBe("core");
+  });
+
+  it('returns "note" for eliminated v1 core files (ADR-0015 §7)', () => {
+    expect(deriveType("activeContext.md")).toBe("note");
+    expect(deriveType("progress.md")).toBe("note");
+    expect(deriveType("productContext.md")).toBe("note");
+    expect(deriveType("systemPatterns.md")).toBe("note");
+    expect(deriveType("techContext.md")).toBe("note");
+  });
+
+  it('returns "structure" for README.md', () => {
+    expect(deriveType("README.md")).toBe("structure");
+  });
+
+  it('returns "note" for unknown root-level files', () => {
+    expect(deriveType("random.md")).toBe("note");
   });
 
   it('returns type from frontmatter when provided', () => {

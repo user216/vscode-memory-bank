@@ -65,21 +65,13 @@ export function registerCommands(
 
       const encoder = new TextEncoder();
 
-      // Create core files with YAML frontmatter (v2 layout)
+      // Create core files with YAML frontmatter (v2 layout — ADR-0015 §7)
       const today = new Date().toISOString().slice(0, 10);
       const coreFiles: Record<string, string> = {
         "projectbrief.md":
-          `---\ntype: core\ntitle: Project Brief\ncreated: ${today}\nupdated: ${today}\ntags: [overview, architecture]\n---\n# Project Brief\n\n## Overview\n\n_Describe the project here._\n\n## Goals\n\n- \n\n## Non-Goals\n\n- \n`,
-        "productContext.md":
-          `---\ntype: core\ntitle: Product Context\ncreated: ${today}\nupdated: ${today}\ntags: [product, ux]\n---\n# Product Context\n\n## Why This Project Exists\n\n_Explain the problem being solved._\n\n## Target Users\n\n- \n\n## User Experience\n\n- \n`,
-        "systemPatterns.md":
-          `---\ntype: core\ntitle: System Patterns\ncreated: ${today}\nupdated: ${today}\ntags: [architecture, patterns]\n---\n# System Patterns\n\n## Architecture\n\n_Describe the high-level architecture._\n\n## Key Patterns\n\n- \n\n## Component Relationships\n\n- \n`,
-        "techContext.md":
-          `---\ntype: core\ntitle: Tech Context\ncreated: ${today}\nupdated: ${today}\ntags: [technology, stack]\n---\n# Tech Context\n\n## Tech Stack\n\n- \n\n## Dependencies\n\n- \n\n## Constraints\n\n- \n`,
-        "activeContext.md":
-          `---\ntype: core\ntitle: Active Context\ncreated: ${today}\nupdated: ${today}\n---\n# Active Context\n\n## Current Focus\n\n- Project initialization\n\n## Recent Changes\n\n- Initialized Memory Bank\n\n## Next Steps\n\n- Fill in projectbrief.md\n`,
-        "progress.md":
-          `---\ntype: core\ntitle: Progress\ncreated: ${today}\nupdated: ${today}\n---\n# Progress\n\n## What Works\n\n- Memory Bank initialized\n\n## What's Left\n\n- Fill in all core documentation\n\n## Known Issues\n\n- None yet\n`,
+          `---\ntype: core\ntitle: Project Brief\ncreated: ${today}\nupdated: ${today}\ntags: [overview]\n---\n# Project Brief\n\n## Overview\n\n_Describe the project here._\n\n## Goals\n\n- \n\n## Non-Goals\n\n- \n`,
+        "README.md":
+          `---\ntype: structure\ntitle: Memory Bank Index\ncreated: ${today}\nupdated: ${today}\n---\n# Memory Bank\n\nProject map and navigation.\n\n- [[projectbrief]] — Project overview, goals, constraints\n\n## Tasks\n\n_Use \`memory_create_task\` or create TASK-NNN.md files._\n\n## Decisions\n\n_Use \`memory_create_decision\` or create ADR-NNNN.md files._\n\n## Notes\n\n_Use \`memory_create_note\` for knowledge items, patterns, and reference material._\n`,
       };
 
       for (const [filename, content] of Object.entries(coreFiles)) {

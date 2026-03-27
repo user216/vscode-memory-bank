@@ -106,17 +106,10 @@ describe("Tool Integration Tests", () => {
       expect(itemsWithinBudget).toBeLessThan(items.length);
     });
 
-    it("foundational strategy orders projectbrief first", () => {
+    it("foundational strategy orders projectbrief first (ADR-0015)", () => {
       const items = Array.from(store.items.values());
 
-      const FOUNDATIONAL_ORDER = [
-        "projectbrief",
-        "productContext",
-        "systemPatterns",
-        "techContext",
-        "activeContext",
-        "progress",
-      ];
+      const FOUNDATIONAL_ORDER = ["projectbrief"];
 
       const sorted = [...items].sort((a, b) => {
         const aIdx = FOUNDATIONAL_ORDER.indexOf(a.id);
@@ -124,14 +117,21 @@ describe("Tool Integration Tests", () => {
         if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
         if (aIdx !== -1) return -1;
         if (bIdx !== -1) return 1;
+        // notes before tasks, tasks before decisions
+        if (a.type === "note" && b.type !== "note") return -1;
+        if (b.type === "note" && a.type !== "note") return 1;
+        if (a.type === "task" && b.type === "decision") return -1;
+        if (a.type === "decision" && b.type === "task") return 1;
         return 0;
       });
 
       expect(sorted[0].id).toBe("projectbrief");
-      expect(sorted[1].id).toBe("productContext");
+      // After projectbrief, notes come before tasks/decisions
+      const firstNonBrief = sorted.find((i) => i.id !== "projectbrief");
+      expect(firstNonBrief?.type).toBe("note");
     });
 
-    it("active strategy orders activeContext first", () => {
+    it("active strategy orders in-progress tasks first (ADR-0015)", () => {
       const items = Array.from(store.items.values());
 
       function getActivePriority(item: {
@@ -139,25 +139,25 @@ describe("Tool Integration Tests", () => {
         type: string;
         status: string | null;
       }): number {
-        if (item.id === "activeContext") return 0;
-        if (item.id === "progress") return 1;
-        if (item.type === "task" && item.status === "In Progress") return 2;
-        if (item.type === "decision" && item.status === "Proposed") return 3;
-        if (item.id === "projectbrief") return 4;
-        if (item.type === "core") return 5;
-        if (item.type === "task") return 6;
-        return 7;
+        if (item.type === "task" && item.status === "In Progress") return 0;
+        if (item.type === "decision" && item.status === "Proposed") return 1;
+        if (item.id === "projectbrief") return 2;
+        if (item.type === "note") return 3;
+        if (item.type === "task") return 4;
+        return 5;
       }
 
       const sorted = [...items].sort(
         (a, b) => getActivePriority(a) - getActivePriority(b),
       );
 
-      expect(sorted[0].id).toBe("activeContext");
-      expect(sorted[1].id).toBe("progress");
-      const inProgressIdx = sorted.findIndex((i) => i.id === "TASK-001");
-      const pendingIdx = sorted.findIndex((i) => i.id === "TASK-002");
-      expect(inProgressIdx).toBeLessThan(pendingIdx);
+      // In-progress task should come first
+      expect(sorted[0].id).toBe("TASK-001");
+      expect(sorted[0].status).toBe("In Progress");
+      // Projectbrief comes after in-progress tasks and proposed decisions
+      const briefIdx = sorted.findIndex((i) => i.id === "projectbrief");
+      const task1Idx = sorted.findIndex((i) => i.id === "TASK-001");
+      expect(task1Idx).toBeLessThan(briefIdx);
     });
   });
 
@@ -242,7 +242,8 @@ describe("Tool Integration Tests", () => {
         typeCounts[item.type] = (typeCounts[item.type] || 0) + 1;
       }
 
-      expect(typeCounts.core).toBe(6);
+      expect(typeCounts.core).toBe(1); // only projectbrief (ADR-0015 §7)
+      expect(typeCounts.note).toBe(6); // 5 legacy core files + NOTE-001
       expect(typeCounts.task).toBe(2);
       expect(typeCounts.decision).toBe(1);
     });

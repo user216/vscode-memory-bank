@@ -4,7 +4,7 @@ import { getStore } from "../index-store.js";
 export function registerMemoryStatus(server: McpServer): void {
   server.tool(
     "memory_status",
-    "Returns computed project status: task counts by status, decision counts by status, note counts, and top tags. Use instead of reading progress.md for a quick snapshot.",
+    "Returns computed project status: task counts by status, decision counts by status, note counts, and top tags.",
     {},
     async () => {
       const store = getStore();
