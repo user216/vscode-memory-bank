@@ -141,7 +141,8 @@
     "bundle-mcp": "node scripts/bundle-mcp.js",
     "build": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "node --test test/bundle-verify.test.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

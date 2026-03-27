@@ -5,6 +5,11 @@
 ### Added
 - **MCP Setup sidebar section** — new "MCP Setup" view showing auto-configured status for Copilot and click-to-copy config for Claude Code / other tools
 - **`memoryBank.copyMcpConfig` command** — copies MCP server config JSON to clipboard for manual setup
+- **Build verification tests** — 13 tests covering VSIX bundling, `.vscodeignore` rules, and config generator behavior (`node --test test/bundle-verify.test.js`)
+
+### Fixed
+- **MCP server crash after upgrade** — `.vscodeignore` excluded `mcp-server/node_modules/**`, stripping bundled dependencies from the VSIX. After upgrading (e.g. 0.3.0 → 0.3.1), the MCP server failed with `ERR_MODULE_NOT_FOUND: Cannot find package '@modelcontextprotocol/sdk'`
+- **Stale MCP server path after upgrade** — config generator now always refreshes `args[0]` in `.vscode/mcp.json` to match the current extension version path, preserving user-customized `env` settings
 
 ### Changed
 - **Zero runtime install** — MCP server dependencies are all pure JS now (no `better-sqlite3`). Dependencies bundled at build time inside the VSIX. No more `npm install --production` at extension activation.

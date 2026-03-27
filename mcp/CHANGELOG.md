@@ -1,5 +1,26 @@
 # Changelog — MCP Server
 
+## 2.0.0
+
+### Changed
+- **Replaced SQLite + FTS5 with MiniSearch + gray-matter** — zero native dependencies (ADR-0016)
+- In-memory index: `Map<string, ParsedItem>` + MiniSearch (BM25, prefix, fuzzy) + adjacency lists
+- YAML frontmatter parsing via `gray-matter`, with backward-compatible `**Key:** Value` fallback
+- Wikilink `[[ID]]` extraction and inline `#tag` parsing
+- File watching via `chokidar` for incremental index updates
+
+### Added
+- `memory_status`: Summary of memory bank state
+- `memory_tags`: List all tags across items
+- `memory_create_note`: Create knowledge notes
+- `memory_save_context`: Persist active context
+- `memory_import_decisions`: Batch import decisions from structured text
+- `memory_update_decision`: Update decision status and content
+
+### Removed
+- SQLite database (`better-sqlite3`, `db.js`, `sync.js`)
+- All native compilation requirements
+
 ## 1.1.0
 
 ### Added

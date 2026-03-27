@@ -14,7 +14,8 @@
   - Dual-layout support: v1 (`tasks/`, `decisions/`) + v2 (flat `TASK-*.md`, `ADR-*.md`)
   - YAML frontmatter parsing for sidebar status display
   - MCP Setup sidebar: Copilot auto-configured, Claude Code click-to-copy
-  - Config generator: only `.vscode/mcp.json`, won't overwrite existing
+  - Config generator: always refreshes MCP server path on activation, preserves user env
+  - 13 build verification tests (bundling, .vscodeignore, config generator)
 - **Copilot Agent Plugin v0.4.0**: Skills + agents + hooks + prompts only (no bundled MCP — ADR-0017)
 - **Layer 0**: Custom instruction file — MCP-first principle, automatic updates
 - **Layer 1**: Agent skill + templates (projectbrief, task, decision)
@@ -23,7 +24,7 @@
 - **Layer 4**: Hooks (SessionStart, PreCompact, Stop)
 - **Layer 5**: MCP server (see above)
 - **Layer 6**: VS Code extension (see above)
-- **17 ADRs**: 15 accepted, 2 deprecated (ADR-0006, ADR-0008)
+- **18 ADRs**: 16 accepted, 2 deprecated (ADR-0006, ADR-0008)
 
 ## What Remains
 - [x] Layer 0-6: All layers built and feature-complete
@@ -36,6 +37,7 @@
 ## Known Issues
 - Extension needs `npm run build:all` to compile and bundle MCP server before packaging
 - v2 flat layout migration tool not yet implemented (manual migration works)
+- `chat.pluginLocations` must point to `copilot-plugin/` subdir, not repo root
 
 ## Overall Status
 Phase: v2 fully implemented, testing
