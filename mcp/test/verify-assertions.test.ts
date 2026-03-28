@@ -358,6 +358,44 @@ describe("verifyAdr", () => {
     const result = verifyAdr(path.join(mbDir, "ADR-0001.md"), tmpDir);
     expect(result.title).toBe("Test Decision");
   });
+
+  it("extracts status from **Status:** bold format", () => {
+    const boldStatusAdr = path.join(mbDir, "ADR-0020.md");
+    fs.writeFileSync(
+      boldStatusAdr,
+      [
+        "# ADR-0020: Bold Status",
+        "",
+        "**Status:** Accepted",
+        "",
+        "## Verification",
+        "",
+        "<!-- ASSERT_FILE_EXISTS: src.ts -->",
+      ].join("\n"),
+    );
+
+    const result = verifyAdr(boldStatusAdr, tmpDir);
+    expect(result.status).toBe("Accepted");
+  });
+
+  it("extracts status from ## Status: heading format", () => {
+    const headingStatusAdr = path.join(mbDir, "ADR-0022.md");
+    fs.writeFileSync(
+      headingStatusAdr,
+      [
+        "# ADR-0022: Heading Status",
+        "",
+        "## Status: Deprecated",
+        "",
+        "## Verification",
+        "",
+        "<!-- ASSERT_FILE_EXISTS: src.ts -->",
+      ].join("\n"),
+    );
+
+    const result = verifyAdr(headingStatusAdr, tmpDir);
+    expect(result.status).toBe("Deprecated");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -452,5 +490,62 @@ describe("verifyAllDecisions", () => {
     const results = verifyAllDecisions(emptyDir, tmpDir);
     expect(results).toHaveLength(0);
     fs.rmSync(emptyDir, { recursive: true });
+  });
+
+  it("includes ADRs with **Status:** Accepted (no YAML frontmatter)", () => {
+    fs.writeFileSync(
+      path.join(mbDir, "ADR-0010.md"),
+      [
+        "# ADR-0010: Bold Status Test",
+        "",
+        "**Status:** Accepted",
+        "",
+        "## Verification",
+        "",
+        "<!-- ASSERT_FILE_EXISTS: real-file.ts -->",
+      ].join("\n"),
+    );
+
+    const results = verifyAllDecisions(mbDir, tmpDir);
+    const ids = results.map((r) => r.adrId);
+    expect(ids).toContain("ADR-0010");
+  });
+
+  it("includes ADRs with ## Status: Accepted heading", () => {
+    fs.writeFileSync(
+      path.join(mbDir, "ADR-0011.md"),
+      [
+        "# ADR-0011: Heading Status Test",
+        "",
+        "## Status: Accepted",
+        "",
+        "## Verification",
+        "",
+        "<!-- ASSERT_FILE_EXISTS: real-file.ts -->",
+      ].join("\n"),
+    );
+
+    const results = verifyAllDecisions(mbDir, tmpDir);
+    const ids = results.map((r) => r.adrId);
+    expect(ids).toContain("ADR-0011");
+  });
+
+  it("skips ADRs with **Status:** Proposed (non-Accepted inline)", () => {
+    fs.writeFileSync(
+      path.join(mbDir, "ADR-0012.md"),
+      [
+        "# ADR-0012: Bold Proposed",
+        "",
+        "**Status:** Proposed",
+        "",
+        "## Verification",
+        "",
+        "<!-- ASSERT_FILE_EXISTS: real-file.ts -->",
+      ].join("\n"),
+    );
+
+    const results = verifyAllDecisions(mbDir, tmpDir);
+    const ids = results.map((r) => r.adrId);
+    expect(ids).not.toContain("ADR-0012");
   });
 });

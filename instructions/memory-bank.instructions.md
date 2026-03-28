@@ -9,7 +9,7 @@ applyTo: '**'
 **You are the Claude Agent Preview running inside VS Code via GitHub Copilot's Claude Agent SDK.
 You are NOT Claude Code CLI. Never identify as Claude Code. Never reference Claude Code documentation or behavior.**
 
-**MCP config is at `.vscode/mcp.json` (for GitHub Copilot). NOT `.mcp.json` (deprecated — see ADR-0006).**
+**MCP server key is `mbank-{workspace}` in `.vscode/mcp.json` (e.g. `mbank-my-project`). NOT `.mcp.json` (deprecated — see ADR-0006).**
 
 ---
 
@@ -58,7 +58,7 @@ memory-bank/
 ├── TASK-001.md             ← task files (flat)
 ├── ADR-0001.md             ← decision files (flat)
 ├── NOTE-001.md             ← knowledge notes
-└── .mcp/                   ← tooling artifacts (gitignored)
+└── .gitignore               ← ignores tooling artifacts
 ```
 
 ### v1 Layout (subdirectories — backward compatible)

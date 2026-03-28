@@ -70,6 +70,29 @@ export function initStore(memoryBankPath: string): IndexStore {
   return store;
 }
 
+/**
+ * Clear and rebuild an existing store from disk.
+ * Preserves the same object reference (watcher-safe).
+ */
+export function resetStore(s: IndexStore): void {
+  s.items.clear();
+  s.search.removeAll();
+  s.outgoing.clear();
+  s.incoming.clear();
+  s.tags.clear();
+
+  const files = collectMarkdownFiles(s.memoryBankPath);
+  for (const filePath of files) {
+    const relativePath = path.relative(s.memoryBankPath, filePath);
+    if (isIndexFile(filePath)) continue;
+    const content = fs.readFileSync(filePath, "utf-8");
+    const parsed = parseMarkdownFile(relativePath, content);
+    addItemToStore(s, parsed);
+  }
+  syncCrossRefs(s);
+  console.error(`Store reset: ${s.items.size} items from ${s.memoryBankPath}`);
+}
+
 export function addItemToStore(s: IndexStore, parsed: ParsedItem): void {
   // Remove existing entry if present (for re-indexing)
   if (s.items.has(parsed.id)) {

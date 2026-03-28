@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath } from "./shared-utils.js";
 export function registerMemorySaveContext(server) {
-    server.tool("memory_save_context", "Save the current active context to activeContext.md with proper structure. Overwrites the file with validated sections and syncs to the in-memory index. Call at end of session or when focus shifts to preserve working state.", {
+    server.tool("memory_save_context", "[DEPRECATED] Previously saved activeContext.md. In v2 (ADR-0015), context is derived from in-progress tasks. This tool now appends a progress log to the most recently updated in-progress task. Prefer memory_update_status with log_entry parameter instead.", {
         current_focus: z
             .string()
             .describe("One-line summary of what the project is currently focused on (e.g. 'Implementing OAuth2 login flow')"),
@@ -19,52 +19,44 @@ export function registerMemorySaveContext(server) {
             .array(z.string())
             .optional()
             .describe("List of next steps, rendered as numbered list (optional). E.g. ['Add password reset flow', 'Write integration tests']"),
-    }, async ({ current_focus, recent_changes, current_decisions, next_steps }) => {
+    }, async ({ current_focus, recent_changes }) => {
         const mbPath = getMemoryBankPath();
-        const filePath = path.join(mbPath, "activeContext.md");
-        // If current_decisions not provided, try to preserve from existing file
-        let decisions = current_decisions;
-        if (!decisions && fs.existsSync(filePath)) {
-            const existing = fs.readFileSync(filePath, "utf-8");
-            const decisionsMatch = existing.match(/## Current Decisions\n([\s\S]*?)(?=\n## |\n*$)/);
-            if (decisionsMatch) {
-                decisions = decisionsMatch[1]
-                    .trim()
-                    .split("\n")
-                    .filter((l) => l.startsWith("- "))
-                    .map((l) => l.replace(/^- /, ""));
-            }
-        }
-        let md = "# Active Context\n\n";
-        md += `## Current Focus\n${current_focus}\n\n`;
-        md += "## Recent Changes\n";
-        for (const change of recent_changes) {
-            md += `- ${change}\n`;
-        }
-        md += "\n";
-        if (decisions && decisions.length > 0) {
-            md += "## Current Decisions\n";
-            for (const d of decisions) {
-                md += `- ${d}\n`;
-            }
-            md += "\n";
-        }
-        if (next_steps && next_steps.length > 0) {
-            md += "## Next Steps\n";
-            next_steps.forEach((step, i) => {
-                md += `${i + 1}. ${step}\n`;
-            });
-            md += "\n";
-        }
-        fs.writeFileSync(filePath, md);
-        // Sync to in-memory index
         const store = getStore();
+        // Find in-progress tasks, sorted by most recently updated
+        const inProgressTasks = Array.from(store.items.values())
+            .filter(item => item.type === "task" && item.status === "In Progress")
+            .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+        if (inProgressTasks.length === 0) {
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: "DEPRECATED: memory_save_context is deprecated in v2 (ADR-0015). " +
+                            "No in-progress tasks found to attach context to. " +
+                            "Use memory_create_task to create a task, or memory_update_status with log_entry to record progress.",
+                    },
+                ],
+            };
+        }
+        // Append context as a progress log entry to the most recent in-progress task
+        const targetTask = inProgressTasks[0];
+        const today = new Date().toISOString().slice(0, 10);
+        const logEntry = `Focus: ${current_focus}. Changes: ${recent_changes.join("; ")}`;
+        const filePath = path.join(mbPath, path.basename(targetTask.filePath));
+        let content = fs.readFileSync(filePath, "utf-8");
+        if (!content.includes("## Progress Log")) {
+            content += "\n## Progress Log\n";
+        }
+        content += `\n### ${today}\n${logEntry}\n`;
+        fs.writeFileSync(filePath, content);
         reindexFile(store, filePath);
         return {
             content: [
                 {
                     type: "text",
-                    text: `Active context saved.\n- Focus: ${current_focus}\n- ${recent_changes.length} recent changes\n- ${decisions?.length ?? 0} decisions\n- ${next_steps?.length ?? 0} next steps`,
+                    text: `DEPRECATED: memory_save_context is deprecated in v2 (ADR-0015). ` +
+                        `Context appended as progress log to ${targetTask.id}. ` +
+                        `Use memory_update_status with log_entry parameter instead.`,
                 },
             ],
         };

@@ -7,13 +7,28 @@ interface McpServerEntry {
   env?: Record<string, string>;
 }
 
+/** Legacy key used in versions <=0.6.2. */
+const LEGACY_KEY = "memory-bank";
+
+/**
+ * Derive a per-workspace MCP server key from the workspace folder name.
+ * Example: workspace "my-project" → key "mbank-my-project"
+ */
+export function deriveServerKey(workspaceRoot: string): string {
+  const folderName = path.basename(workspaceRoot)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `mbank-${folderName || "default"}`;
+}
+
 /**
  * Generate the GitHub Copilot MCP config at `.vscode/mcp.json`.
  *
- * Always ensures the server path points to the currently installed
- * extension version. This prevents stale paths after extension upgrades
- * (e.g. .../vscode-memory-bank-0.3.0/... → .../vscode-memory-bank-0.3.1/...).
- * Preserves any user-customized `env` settings.
+ * Uses a per-workspace key (`mbank-{workspace}`) to avoid conflicts with
+ * Claude's reserved `#memory` prefix. Migrates the old `memory-bank` key
+ * if present, preserving user-customized `env` settings.
  */
 export async function generateCopilotMcpConfig(
   workspaceRoot: string,
@@ -31,12 +46,22 @@ export async function generateCopilotMcpConfig(
     existing.servers = {};
   }
   const servers = existing.servers as Record<string, McpServerEntry | undefined>;
-  const current = servers["memory-bank"];
 
-  // Preserve user-customized env, update everything else
-  const env = current?.env ?? { MEMORY_BANK_PATH: "${workspaceFolder}/memory-bank" };
+  const serverKey = deriveServerKey(workspaceRoot);
 
-  servers["memory-bank"] = {
+  // Migrate from legacy "memory-bank" key if present
+  const legacy = servers[LEGACY_KEY];
+  const current = servers[serverKey];
+
+  // Preserve user env from whichever key exists (prefer new key, fall back to legacy)
+  const env = current?.env ?? legacy?.env ?? { MEMORY_BANK_PATH: "${workspaceFolder}/memory-bank" };
+
+  // Remove legacy key
+  if (legacy) {
+    delete servers[LEGACY_KEY];
+  }
+
+  servers[serverKey] = {
     command: "node",
     args: [mcpServerPath],
     env,
@@ -47,10 +72,16 @@ export async function generateCopilotMcpConfig(
 
 /**
  * Build a JSON config snippet for manual MCP setup (Claude Code, etc.)
+ * Uses workspace name for unique key when available.
  */
-export function buildMcpConfigSnippet(mcpServerPath: string, memoryBankPath: string): string {
+export function buildMcpConfigSnippet(
+  mcpServerPath: string,
+  memoryBankPath: string,
+  workspaceRoot?: string,
+): string {
+  const key = workspaceRoot ? deriveServerKey(workspaceRoot) : "mbank";
   const config = {
-    "memory-bank": {
+    [key]: {
       command: "node",
       args: [mcpServerPath],
       env: { MEMORY_BANK_PATH: memoryBankPath },

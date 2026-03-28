@@ -168,43 +168,62 @@ describe("config-generator", () => {
   }
   function afterEach(fn) {}
 
-  it("buildMcpConfigSnippet returns valid JSON with correct structure", () => {
+  it("buildMcpConfigSnippet returns valid JSON with mbank key", () => {
+    const snippet = configGen.buildMcpConfigSnippet(
+      "/path/to/index.js",
+      "/path/to/memory-bank",
+      "/workspace/my-project",
+    );
+    const parsed = JSON.parse(snippet);
+    const key = "mbank-my-project";
+
+    assert.ok(parsed[key], `snippet must have ${key} key`);
+    assert.equal(parsed[key].command, "node");
+    assert.deepEqual(parsed[key].args, ["/path/to/index.js"]);
+    assert.equal(
+      parsed[key].env.MEMORY_BANK_PATH,
+      "/path/to/memory-bank",
+    );
+  });
+
+  it("buildMcpConfigSnippet uses 'mbank' when no workspaceRoot given", () => {
     const snippet = configGen.buildMcpConfigSnippet(
       "/path/to/index.js",
       "/path/to/memory-bank",
     );
     const parsed = JSON.parse(snippet);
-
-    assert.ok(parsed["memory-bank"], "snippet must have memory-bank key");
-    assert.equal(parsed["memory-bank"].command, "node");
-    assert.deepEqual(parsed["memory-bank"].args, ["/path/to/index.js"]);
-    assert.equal(
-      parsed["memory-bank"].env.MEMORY_BANK_PATH,
-      "/path/to/memory-bank",
-    );
+    assert.ok(parsed["mbank"], "snippet must have 'mbank' key when no workspace");
   });
 
-  it("generateCopilotMcpConfig creates .vscode/mcp.json when missing", async () => {
+  it("deriveServerKey produces clean key from workspace name", () => {
+    assert.equal(configGen.deriveServerKey("/home/user/My Project"), "mbank-my-project");
+    assert.equal(configGen.deriveServerKey("/home/user/simple"), "mbank-simple");
+    assert.equal(configGen.deriveServerKey("/home/user/a--b"), "mbank-a-b");
+  });
+
+  it("generateCopilotMcpConfig creates .vscode/mcp.json with mbank key", async () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mb-cfg-test-"));
     try {
       await configGen.generateCopilotMcpConfig(tmp, "/ext/mcp-server/build/index.js");
+      const expectedKey = configGen.deriveServerKey(tmp);
 
       const cfg = JSON.parse(
         fs.readFileSync(path.join(tmp, ".vscode", "mcp.json"), "utf-8"),
       );
-      assert.ok(cfg.servers["memory-bank"], "must create memory-bank entry");
-      assert.deepEqual(cfg.servers["memory-bank"].args, [
+      assert.ok(cfg.servers[expectedKey], `must create ${expectedKey} entry`);
+      assert.deepEqual(cfg.servers[expectedKey].args, [
         "/ext/mcp-server/build/index.js",
       ]);
+      assert.ok(!cfg.servers["memory-bank"], "must not use legacy key");
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
 
-  it("generateCopilotMcpConfig updates stale path in existing config", async () => {
+  it("generateCopilotMcpConfig migrates legacy memory-bank key", async () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mb-cfg-test-"));
     try {
-      // Write an existing config with an old version path
+      // Write an existing config with the old "memory-bank" key
       const vscodeDir = path.join(tmp, ".vscode");
       fs.mkdirSync(vscodeDir, { recursive: true });
       fs.writeFileSync(
@@ -223,21 +242,26 @@ describe("config-generator", () => {
       // Run with new path
       await configGen.generateCopilotMcpConfig(
         tmp,
-        "/new/path/vscode-memory-bank-0.3.1/mcp-server/build/index.js",
+        "/new/path/vscode-memory-bank-0.6.3/mcp-server/build/index.js",
       );
 
       const cfg = JSON.parse(
         fs.readFileSync(path.join(vscodeDir, "mcp.json"), "utf-8"),
       );
+      const expectedKey = configGen.deriveServerKey(tmp);
 
-      // Path must be updated
-      assert.deepEqual(cfg.servers["memory-bank"].args, [
-        "/new/path/vscode-memory-bank-0.3.1/mcp-server/build/index.js",
+      // Legacy key must be removed
+      assert.ok(!cfg.servers["memory-bank"], "legacy key must be removed");
+
+      // New key must exist with updated path
+      assert.ok(cfg.servers[expectedKey], `new key ${expectedKey} must exist`);
+      assert.deepEqual(cfg.servers[expectedKey].args, [
+        "/new/path/vscode-memory-bank-0.6.3/mcp-server/build/index.js",
       ]);
 
-      // Custom env must be preserved
+      // Custom env must be preserved from legacy key
       assert.equal(
-        cfg.servers["memory-bank"].env.MEMORY_BANK_PATH,
+        cfg.servers[expectedKey].env.MEMORY_BANK_PATH,
         "${workspaceFolder}/my-custom-path",
       );
     } finally {
@@ -263,6 +287,7 @@ describe("config-generator", () => {
       );
 
       await configGen.generateCopilotMcpConfig(tmp, "/ext/index.js");
+      const expectedKey = configGen.deriveServerKey(tmp);
 
       const cfg = JSON.parse(
         fs.readFileSync(path.join(vscodeDir, "mcp.json"), "utf-8"),
@@ -270,7 +295,7 @@ describe("config-generator", () => {
 
       assert.ok(cfg.servers["other-server"], "must preserve other servers");
       assert.equal(cfg.servers["other-server"].command, "python");
-      assert.ok(cfg.servers["memory-bank"], "must add memory-bank");
+      assert.ok(cfg.servers[expectedKey], `must add ${expectedKey}`);
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

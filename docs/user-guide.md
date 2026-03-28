@@ -487,7 +487,7 @@ npx tsc
 ```json
 {
   "mcpServers": {
-    "memory-bank": {
+    "mbank": {
       "command": "node",
       "args": ["/absolute/path/to/vscode-memory-bank/mcp/build/index.js"],
       "env": {
@@ -948,7 +948,7 @@ You can also explicitly ask: "Create an ADR for choosing PostgreSQL over MySQL."
 ```json
 {
   "mcpServers": {
-    "memory-bank": {
+    "mbank": {
       "command": "node",
       "args": ["/absolute/path/to/mcp/build/index.js"],
       "env": {

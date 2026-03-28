@@ -139,6 +139,31 @@ export function extractInlineTags(content: string): string[] {
   return Array.from(tags);
 }
 
+/**
+ * 3-tier status extraction: YAML frontmatter → **Status:** bold → ## Status: heading.
+ * Returns the first non-empty match, or null if none found.
+ */
+export function extractStatus(
+  bodyContent: string,
+  frontmatterData: Record<string, unknown>,
+): string | null {
+  // Tier 1: YAML frontmatter
+  if (typeof frontmatterData.status === "string" && frontmatterData.status) {
+    return frontmatterData.status;
+  }
+  // Tier 2: **Status:** bold inline metadata
+  const inlineMetadata = extractMetadata(bodyContent);
+  if (inlineMetadata["Status"]) {
+    return inlineMetadata["Status"];
+  }
+  // Tier 3: ## Status: heading
+  const headingMatch = bodyContent.match(/^##\s+Status:\s*(.+)$/m);
+  if (headingMatch) {
+    return headingMatch[1].trim();
+  }
+  return null;
+}
+
 export function parseMarkdownFile(
   filePath: string,
   content: string,
@@ -199,14 +224,7 @@ export function parseMarkdownFile(
   const updatedAt = (fmUpdated instanceof Date ? fmUpdated.toISOString().slice(0, 10) : (fmUpdated as string)) || metadata["Updated"] || metadata["Date"] || null;
 
   // Extract status — frontmatter takes precedence, then **Status:**, then ## Status: heading
-  let status: string | null = (frontmatterData.status as string) || metadata["Status"] || null;
-  if (!status) {
-    // Try ## Status: heading format (e.g. "## Status: Accepted")
-    const headingStatusMatch = bodyContent.match(/^##\s+Status:\s*(.+)$/m);
-    if (headingStatusMatch) {
-      status = headingStatusMatch[1].trim();
-    }
-  }
+  const status = extractStatus(bodyContent, frontmatterData);
 
   return {
     id,

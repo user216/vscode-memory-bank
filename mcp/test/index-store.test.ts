@@ -9,6 +9,7 @@ import {
   removeLinkFromStore,
   reindexFile,
   generateExcerpt,
+  resetStore,
 } from "../src/index-store.js";
 
 const FIXTURES_SRC = path.resolve(
@@ -266,5 +267,41 @@ describe("LinkOperations", () => {
     const outLinks = store.outgoing.get("TASK-001") || [];
     expect(outLinks.some((l) => l.relation === "old-rel")).toBe(false);
     expect(outLinks.some((l) => l.target === "ADR-0001" && l.relation === "new-rel")).toBe(true);
+  });
+});
+
+// ── resetStore ───────────────────────────────────────────────────────
+
+describe("resetStore", () => {
+  let tmpPath: string;
+
+  beforeEach(() => {
+    tmpPath = fs.mkdtempSync(path.join(os.tmpdir(), "mbvmb-reset-"));
+    fs.cpSync(FIXTURES_SRC, tmpPath, { recursive: true, filter: (src) => !src.includes(".mcp") });
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(tmpPath)) fs.rmSync(tmpPath, { recursive: true });
+  });
+
+  it("rebuilds items and cross-references from disk", () => {
+    const store = initStore(tmpPath);
+    const originalCount = store.items.size;
+
+    resetStore(store);
+
+    expect(store.items.size).toBe(originalCount);
+    // Cross-refs should still exist after reset
+    expect(store.outgoing.size + store.incoming.size).toBeGreaterThan(0);
+  });
+
+  it("preserves the same object reference", () => {
+    const store = initStore(tmpPath);
+    const ref = store;
+
+    resetStore(store);
+
+    expect(store).toBe(ref);
+    expect(store.items.size).toBeGreaterThan(0);
   });
 });

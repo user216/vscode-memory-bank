@@ -106,7 +106,7 @@ Create `.vscode/mcp.json` in your test project with this content:
 ```json
 {
   "servers": {
-    "memory-bank": {
+    "mbank": {
       "command": "node",
       "args": [
         "/FULL/PATH/TO/vscode-memory-bank/mcp/build/index.js"

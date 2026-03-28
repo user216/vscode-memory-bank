@@ -2,6 +2,44 @@
 
 All notable changes to this project are documented here. Each component (extension, MCP server, layers) has its own section.
 
+## 2026-03-28
+
+### Extension v0.6.3 — MCP Server Key Rename & Version Display
+
+#### Changed
+- **MCP server key renamed** from `"memory-bank"` to `"mbank-{workspace}"` (e.g. `mbank-my-project`) — avoids conflict with Claude's reserved `#memory` prefix
+- **Legacy migration**: existing `"memory-bank"` keys in `.vscode/mcp.json` are automatically migrated to new `mbank-{workspace}` key, preserving user `env` settings
+- **Sidebar title shows version**: "MEMORY BANK V0.6.3" baked into view container title at build time via `sync-versions.js`
+- Copy-to-clipboard MCP config snippet now uses `mbank-{workspace}` key
+
+#### Added
+- **`deriveServerKey()`** in config-generator — derives clean per-workspace key from folder name
+- **`scripts/sync-versions.js`** — centralized version management: `--bump`, `--set-ext`, `--set-mcp`, `--sync`; propagates to `package.json`, MEMORY.md, and view container title
+- **`extension/scripts/auto-version.js`** — auto-bumps extension patch if VSIX with current version exists
+
+### MCP Server v2.3.0 — Migration & Verification Fixes
+
+#### Added
+- **`extractStatus()` in parser.ts** — reusable 3-tier status extraction (YAML → bold → heading), shared by parser and verify engine
+- **`resetStore()` in index-store.ts** — full in-memory store rebuild from disk, preserves object reference (watcher-safe)
+- **README.md auto-creation** during v1→v2 migration (v1 memory-banks don't have one)
+- **Pre-migration warnings** — dry_run mode warns if deprecated core files contain substantial content worth saving to a NOTE
+- **User-created link preservation** — migration snapshots non-auto-detected links and restores them after store reset
+- **`.mcp/` directory cleanup** — migration deletes orphaned SQLite database directory from pre-ADR-0016
+- **16 new tests** (163 total): `extractStatus` (6), 3-tier verify status (5), `resetStore` (2), migration improvements (3)
+
+#### Fixed
+- `verifyAllDecisions` now uses 3-tier status parsing — no longer silently skips ADRs with `**Status:** Accepted` or `## Status: Accepted` (only YAML frontmatter was checked)
+- Link count no longer drops during migration — `resetStore()` rebuilds full bidirectional cross-reference graph after all file moves
+- Item count consistency after migration — full store rebuild ensures count matches filesystem
+
+### Extension v0.6.0 — Build Automation
+
+#### Added
+- **`npm run package`** — auto-bumps patch version if VSIX with current version already exists, prevents same-version rebuilds
+- **`scripts/bump-version.sh`** — unified version bump across MCP + extension package.json, compiles, bundles, and packages
+- **`extension/README.md`** — marketplace details page with features, MCP tools table, commands, and setup instructions
+
 ## 2026-03-27
 
 ### MCP Server v2.2.0 — ADR Compliance Verification (ADR-0021)

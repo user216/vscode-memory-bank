@@ -42,7 +42,13 @@ export function deriveType(filePath, frontmatterType) {
         return "decision";
     if (basename.match(/^NOTE-\d{3}/))
         return "note";
-    return "core";
+    // ADR-0015 §7: only projectbrief is "core"; README is "structure"; all others are "note"
+    const stem = basename.replace(/\.md$/, "");
+    if (stem === "projectbrief")
+        return "core";
+    if (stem === "README")
+        return "structure";
+    return "note";
 }
 export function deriveTitle(id, content) {
     // Try to get the first H1 heading
@@ -114,6 +120,27 @@ export function extractInlineTags(content) {
     }
     return Array.from(tags);
 }
+/**
+ * 3-tier status extraction: YAML frontmatter → **Status:** bold → ## Status: heading.
+ * Returns the first non-empty match, or null if none found.
+ */
+export function extractStatus(bodyContent, frontmatterData) {
+    // Tier 1: YAML frontmatter
+    if (typeof frontmatterData.status === "string" && frontmatterData.status) {
+        return frontmatterData.status;
+    }
+    // Tier 2: **Status:** bold inline metadata
+    const inlineMetadata = extractMetadata(bodyContent);
+    if (inlineMetadata["Status"]) {
+        return inlineMetadata["Status"];
+    }
+    // Tier 3: ## Status: heading
+    const headingMatch = bodyContent.match(/^##\s+Status:\s*(.+)$/m);
+    if (headingMatch) {
+        return headingMatch[1].trim();
+    }
+    return null;
+}
 export function parseMarkdownFile(filePath, content) {
     const id = deriveId(filePath);
     // Try YAML frontmatter first
@@ -162,14 +189,7 @@ export function parseMarkdownFile(filePath, content) {
     const createdAt = (fmCreated instanceof Date ? fmCreated.toISOString().slice(0, 10) : fmCreated) || metadata["Added"] || metadata["Date"] || null;
     const updatedAt = (fmUpdated instanceof Date ? fmUpdated.toISOString().slice(0, 10) : fmUpdated) || metadata["Updated"] || metadata["Date"] || null;
     // Extract status — frontmatter takes precedence, then **Status:**, then ## Status: heading
-    let status = frontmatterData.status || metadata["Status"] || null;
-    if (!status) {
-        // Try ## Status: heading format (e.g. "## Status: Accepted")
-        const headingStatusMatch = bodyContent.match(/^##\s+Status:\s*(.+)$/m);
-        if (headingStatusMatch) {
-            status = headingStatusMatch[1].trim();
-        }
-    }
+    const status = extractStatus(bodyContent, frontmatterData);
     return {
         id,
         type,

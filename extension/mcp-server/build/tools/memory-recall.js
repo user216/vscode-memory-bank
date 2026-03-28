@@ -1,19 +1,12 @@
 import { z } from "zod";
 import { getStore } from "../index-store.js";
 const CHARS_PER_TOKEN = 3.5;
-// Priority order for "foundational" strategy
-const FOUNDATIONAL_ORDER = [
-    "projectbrief",
-    "productContext",
-    "systemPatterns",
-    "techContext",
-    "activeContext",
-    "progress",
-];
+// Priority order for "foundational" strategy (ADR-0015 §7: only projectbrief is core)
+const FOUNDATIONAL_ORDER = ["projectbrief"];
 export function registerMemoryRecall(server) {
     server.tool("memory_recall", "Token-budgeted context retrieval — call once at session start to load project context efficiently. Returns memory bank content prioritized by strategy, trimmed to fit within a token budget. Parameters: budget (number, 500-100000, default 8000) and priority ('foundational' | 'recent' | 'active', default 'active'). Not for searching; use memory_search or memory_query for lookups.", {
         budget: z.number().min(500).max(100000).optional().describe("Token budget (default 8000). ~4000 for quick orientation, ~8000 for working context, ~16000+ for deep review. Content is truncated to fit."),
-        priority: z.enum(["foundational", "recent", "active"]).optional().describe("Priority strategy (default 'active'): 'foundational' = project overview first (projectbrief → productContext → systemPatterns → techContext → activeContext → progress), 'recent' = most recently updated items first, 'active' = current context + in-progress tasks + proposed decisions first"),
+        priority: z.enum(["foundational", "recent", "active"]).optional().describe("Priority strategy (default 'active'): 'foundational' = project overview first (projectbrief), then notes, tasks, decisions, 'recent' = most recently updated items first, 'active' = in-progress tasks + proposed decisions + projectbrief first"),
     }, async ({ budget, priority }) => {
         const store = getStore();
         const tokenBudget = budget ?? 8000;
@@ -62,6 +55,11 @@ function getOrderedItems(all, strategy) {
                     return -1;
                 if (bIdx !== -1)
                     return 1;
+                // notes before tasks, tasks before decisions
+                if (a.type === "note" && b.type !== "note")
+                    return -1;
+                if (b.type === "note" && a.type !== "note")
+                    return 1;
                 if (a.type === "task" && b.type === "decision")
                     return -1;
                 if (a.type === "decision" && b.type === "task")
@@ -90,21 +88,18 @@ function getOrderedItems(all, strategy) {
         }
     }
 }
+// ADR-0015 §7: context derived from tasks, not activeContext.md
 function getActivePriority(item) {
-    if (item.id === "activeContext")
-        return 0;
-    if (item.id === "progress")
-        return 1;
     if (item.type === "task" && item.status === "In Progress")
-        return 2;
+        return 0;
     if (item.type === "decision" && item.status === "Proposed")
-        return 3;
+        return 1;
     if (item.id === "projectbrief")
-        return 4;
-    if (item.type === "core")
-        return 5;
+        return 2;
+    if (item.type === "note")
+        return 3;
     if (item.type === "task")
-        return 6;
-    return 7;
+        return 4;
+    return 5;
 }
 //# sourceMappingURL=memory-recall.js.map

@@ -7,5 +7,10 @@ export declare function extractSections(content: string): Record<string, string>
 export declare function extractCrossRefs(content: string): string[];
 export declare function extractWikilinks(content: string): string[];
 export declare function extractInlineTags(content: string): string[];
+/**
+ * 3-tier status extraction: YAML frontmatter → **Status:** bold → ## Status: heading.
+ * Returns the first non-empty match, or null if none found.
+ */
+export declare function extractStatus(bodyContent: string, frontmatterData: Record<string, unknown>): string | null;
 export declare function parseMarkdownFile(filePath: string, content: string): ParsedItem;
 export declare function isIndexFile(filePath: string): boolean;

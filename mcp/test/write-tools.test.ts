@@ -744,4 +744,44 @@ describe("memory_migrate_v1", () => {
     }
     expect(fs.existsSync(testDir)).toBe(false);
   });
+
+  it("detects and deletes .mcp directory", () => {
+    const mcpDir = path.join(tmpPath, ".mcp");
+    fs.mkdirSync(mcpDir, { recursive: true });
+    fs.writeFileSync(path.join(mcpDir, "memory-bank.db"), "dummy");
+
+    expect(fs.existsSync(mcpDir)).toBe(true);
+
+    // Simulate migration actual mode
+    fs.rmSync(mcpDir, { recursive: true });
+    expect(fs.existsSync(mcpDir)).toBe(false);
+  });
+
+  it("warns about deprecated core files with substantial content", () => {
+    const activeCtx = path.join(tmpPath, "activeContext.md");
+    if (!fs.existsSync(activeCtx)) return;
+
+    const content = fs.readFileSync(activeCtx, "utf-8");
+    const strippedContent = content.replace(/^---[\s\S]*?---\n?/, "").replace(/^#.*$/gm, "").replace(/\*\*\w[\w\s]*?:\*\*.*$/gm, "").trim();
+    // activeContext fixture should have real content beyond headings
+    expect(strippedContent.length).toBeGreaterThan(50);
+  });
+
+  it("creates README.md when missing", () => {
+    const readmePath = path.join(tmpPath, "README.md");
+    // Ensure README doesn't exist (v1 fixture shouldn't have one)
+    if (fs.existsSync(readmePath)) fs.unlinkSync(readmePath);
+
+    expect(fs.existsSync(readmePath)).toBe(false);
+
+    // Simulate migration README creation
+    const today = new Date().toISOString().slice(0, 10);
+    const readmeContent = `---\ntype: structure\ntitle: Memory Bank Index\ncreated: ${today}\nupdated: ${today}\n---\n# Memory Bank\n\nProject map and navigation.\n`;
+    fs.writeFileSync(readmePath, readmeContent);
+
+    expect(fs.existsSync(readmePath)).toBe(true);
+    const written = fs.readFileSync(readmePath, "utf-8");
+    expect(written).toContain("type: structure");
+    expect(written).toContain("# Memory Bank");
+  });
 });

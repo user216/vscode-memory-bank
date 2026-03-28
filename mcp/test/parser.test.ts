@@ -8,6 +8,7 @@ import {
   extractCrossRefs,
   parseMarkdownFile,
   isIndexFile,
+  extractStatus,
 } from "../src/parser.js";
 
 describe("deriveId", () => {
@@ -329,5 +330,33 @@ describe("isIndexFile", () => {
   it("rejects non-index files", () => {
     expect(isIndexFile("tasks/TASK-001.md")).toBe(false);
     expect(isIndexFile("projectbrief.md")).toBe(false);
+  });
+});
+
+// ── extractStatus ────────────────────────────────────────────────────
+
+describe("extractStatus", () => {
+  it("returns status from YAML frontmatter data", () => {
+    expect(extractStatus("body", { status: "Accepted" })).toBe("Accepted");
+  });
+
+  it("returns status from **Status:** bold format", () => {
+    expect(extractStatus("**Status:** In Progress\n\nOther content", {})).toBe("In Progress");
+  });
+
+  it("returns status from ## Status: heading format", () => {
+    expect(extractStatus("# Title\n\n## Status: Proposed\n\n## Context", {})).toBe("Proposed");
+  });
+
+  it("prefers YAML over bold over heading", () => {
+    expect(extractStatus("**Status:** Bold\n\n## Status: Heading", { status: "YAML" })).toBe("YAML");
+  });
+
+  it("prefers bold over heading when no YAML", () => {
+    expect(extractStatus("**Status:** Bold\n\n## Status: Heading", {})).toBe("Bold");
+  });
+
+  it("returns null when no status found", () => {
+    expect(extractStatus("No status here", {})).toBeNull();
   });
 });

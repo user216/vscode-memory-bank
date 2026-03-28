@@ -2,7 +2,7 @@
   "name": "vscode-memory-bank",
   "displayName": "Memory Bank",
   "description": "Persistent AI project memory across sessions — structured documentation, search, and knowledge graph for GitHub Copilot agents.",
-  "version": "0.5.0",
+  "version": "0.6.3",
   "publisher": "narayanaya",
   "license": "Apache-2.0",
   "repository": {
@@ -32,7 +32,7 @@
       "activitybar": [
         {
           "id": "memory-bank",
-          "title": "Memory Bank",
+          "title": "Memory Bank v0.6.3",
           "icon": "media/memory-bank.svg"
         }
       ]
@@ -147,7 +147,8 @@
     "build": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src",
-    "test": "node --test test/bundle-verify.test.js"
+    "test": "node --test test/bundle-verify.test.js",
+    "package": "node scripts/auto-version.js && npx @vscode/vsce package"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

@@ -19,6 +19,11 @@ export interface IndexStore {
 }
 export declare function getStore(): IndexStore;
 export declare function initStore(memoryBankPath: string): IndexStore;
+/**
+ * Clear and rebuild an existing store from disk.
+ * Preserves the same object reference (watcher-safe).
+ */
+export declare function resetStore(s: IndexStore): void;
 export declare function addItemToStore(s: IndexStore, parsed: ParsedItem): void;
 export declare function removeItemFromStore(s: IndexStore, id: string): void;
 export declare function addLinkToStore(s: IndexStore, source: string, target: string, relation: string): boolean;

@@ -11,6 +11,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import matter from "gray-matter";
+import { extractStatus } from "./parser.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -175,15 +176,14 @@ export function verifyAdr(
   projectRoot: string,
 ): AdrVerificationResult {
   const raw = fs.readFileSync(adrFilePath, "utf-8");
-  const { data } = matter(raw);
+  const { data, content: bodyContent } = matter(raw);
 
   const basename = path.basename(adrFilePath, ".md");
   const title =
     (typeof data.title === "string" ? data.title : "") ||
     extractFirstHeading(raw) ||
     basename;
-  const status =
-    typeof data.status === "string" ? data.status : "Unknown";
+  const status = extractStatus(bodyContent, data) || "Unknown";
 
   const assertions = parseAssertions(raw);
   const results = assertions.map((a) => executeAssertion(a, projectRoot));
@@ -209,8 +209,8 @@ export function verifyAllDecisions(
   for (const file of files) {
     const filePath = path.join(mbPath, file);
     const raw = fs.readFileSync(filePath, "utf-8");
-    const { data } = matter(raw);
-    const status = typeof data.status === "string" ? data.status : "";
+    const { data, content: bodyContent } = matter(raw);
+    const status = extractStatus(bodyContent, data) || "";
     if (status !== "Accepted") continue;
 
     const assertions = parseAssertions(raw);

@@ -103,7 +103,7 @@ Add to `.vscode/mcp.json` in any project that has a `memory-bank/` directory:
 ```json
 {
   "servers": {
-    "memory-bank": {
+    "mbank": {
       "command": "node",
       "args": ["/path/to/vscode-memory-bank/mcp/build/index.js"],
       "env": {

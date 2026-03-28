@@ -23,6 +23,7 @@ import { registerMemoryCreateNote } from "./tools/memory-create-note.js";
 import { registerMemoryBulkUpdateStatus } from "./tools/memory-bulk-update-status.js";
 import { registerMemoryAddTag } from "./tools/memory-add-tag.js";
 import { registerMemoryMigrateV1 } from "./tools/memory-migrate-v1.js";
+import { registerMemoryVerifyDecisions } from "./tools/memory-verify-decisions.js";
 const MEMORY_BANK_PATH = process.env.MEMORY_BANK_PATH || path.join(process.cwd(), "memory-bank");
 async function main() {
     console.error("vscode-memory-bank-mcp starting...");
@@ -57,6 +58,7 @@ async function main() {
     registerMemoryBulkUpdateStatus(server);
     registerMemoryAddTag(server);
     registerMemoryMigrateV1(server);
+    registerMemoryVerifyDecisions(server);
     // Connect via stdio transport
     const transport = new StdioServerTransport();
     await server.connect(transport);

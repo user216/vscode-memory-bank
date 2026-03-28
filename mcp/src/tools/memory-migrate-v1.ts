@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getStore, reindexFile, removeItemFromStore } from "../index-store.js";
+import { getStore, reindexFile, removeItemFromStore, resetStore, addLinkToStore } from "../index-store.js";
 import { getMemoryBankPath } from "./shared-utils.js";
 import { deriveId } from "../parser.js";
 
@@ -24,6 +24,19 @@ export function registerMemoryMigrateV1(server: McpServer): void {
 
       const actions: string[] = [];
       const warnings: string[] = [];
+
+      // Snapshot user-created links before migration (non-auto-detected)
+      const savedLinks: Array<{source: string; target: string; relation: string}> = [];
+      if (!dry_run) {
+        for (const [source, links] of store.outgoing) {
+          for (const link of links) {
+            if (link.relation !== "references" && link.relation !== "related") {
+              savedLinks.push({ source, target: link.target, relation: link.relation });
+            }
+          }
+        }
+      }
+
       const subdirs = [
         { dir: "tasks", prefix: "TASK-", padding: 3, type: "task" as const },
         { dir: "decisions", prefix: "ADR-", padding: 4, type: "decision" as const },
@@ -92,7 +105,7 @@ export function registerMemoryMigrateV1(server: McpServer): void {
         }
       }
 
-      // Step 6: Detect and delete deprecated v1 core files (ADR-0015 §7)
+      // Detect and delete deprecated v1 core files (ADR-0015 §7)
       const DEPRECATED_CORE_FILES = [
         "activeContext.md",
         "progress.md",
@@ -107,6 +120,14 @@ export function registerMemoryMigrateV1(server: McpServer): void {
 
         if (dry_run) {
           actions.push(`Delete deprecated: ${filename} (replaced by tasks/notes/memory_status in v2)`);
+          // Warn if file has substantial content worth preserving
+          const content = fs.readFileSync(filePath, "utf-8");
+          const strippedContent = content.replace(/^---[\s\S]*?---\n?/, "").replace(/^#.*$/gm, "").replace(/\*\*\w[\w\s]*?:\*\*.*$/gm, "").trim();
+          if (strippedContent.length > 50) {
+            warnings.push(
+              `${filename} contains content that will be deleted. Consider saving valuable context to a NOTE (memory_create_note) before running migration.`
+            );
+          }
         } else {
           const id = filename.replace(".md", "");
           if (store.items.has(id)) {
@@ -125,6 +146,47 @@ export function registerMemoryMigrateV1(server: McpServer): void {
         } else {
           fs.unlinkSync(rootIndex);
           actions.push("Deleted: _index.md");
+        }
+      }
+
+      // Delete orphaned .mcp directory (pre-ADR-0016 SQLite database)
+      const mcpDir = path.join(mbPath, ".mcp");
+      if (fs.existsSync(mcpDir)) {
+        if (dry_run) {
+          actions.push("Delete: .mcp/ directory (orphaned SQLite database from pre-ADR-0016)");
+        } else {
+          fs.rmSync(mcpDir, { recursive: true });
+          actions.push("Deleted: .mcp/ directory");
+        }
+      }
+
+      // Create README.md if missing (v1 memory-banks don't have one)
+      const readmePath = path.join(mbPath, "README.md");
+      if (!fs.existsSync(readmePath)) {
+        if (dry_run) {
+          actions.push("Create: README.md (v2 navigation index)");
+        } else {
+          const readmeContent = `---\ntype: structure\ntitle: Memory Bank Index\ncreated: ${today}\nupdated: ${today}\n---\n# Memory Bank\n\nProject map and navigation.\n\n- [[projectbrief]] — Project overview, goals, constraints\n\n## Tasks\n\n_Use \`memory_create_task\` or create TASK-NNN.md files._\n\n## Decisions\n\n_Use \`memory_create_decision\` or create ADR-NNNN.md files._\n\n## Notes\n\n_Use \`memory_create_note\` for knowledge items, patterns, and reference material._\n`;
+          fs.writeFileSync(readmePath, readmeContent);
+          reindexFile(store, readmePath);
+          actions.push("Created: README.md (v2 navigation index)");
+        }
+      }
+
+      // Rebuild store from disk to ensure consistency (item count + link graph)
+      if (!dry_run && actions.length > 0) {
+        resetStore(store);
+
+        // Restore user-created links
+        let restoredLinks = 0;
+        for (const { source, target, relation } of savedLinks) {
+          if (store.items.has(source) && store.items.has(target)) {
+            addLinkToStore(store, source, target, relation);
+            restoredLinks++;
+          }
+        }
+        if (savedLinks.length > 0) {
+          actions.push(`Restored ${restoredLinks}/${savedLinks.length} user-created link(s)`);
         }
       }
 

@@ -126,7 +126,8 @@ export function registerCommands(
       async (mcpServerPath?: string, memoryBankPath?: string) => {
         const serverPath = mcpServerPath ?? "node_modules/.../mcp-server/build/index.js";
         const mbPath = memoryBankPath ?? "./memory-bank";
-        const snippet = buildMcpConfigSnippet(serverPath, mbPath);
+        const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const snippet = buildMcpConfigSnippet(serverPath, mbPath, wsRoot);
         await vscode.env.clipboard.writeText(snippet);
         vscode.window.showInformationMessage(
           "MCP config copied to clipboard — paste into your AI tool's MCP settings.",
