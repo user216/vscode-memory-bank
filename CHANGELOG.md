@@ -22,7 +22,7 @@ All notable changes to this project are documented here. Each component (extensi
 - `memory_migrate_v1` warning messages no longer reference notes
 - Tool count: 21 → 20
 
-### Extension v0.7.0 — Notes Sidebar Removed (ADR-0025)
+### Extension v0.7.0 — Notes Sidebar Removed (ADR-0025), .env Version Source (ADR-0026)
 
 #### Removed
 - **Notes sidebar view** (`memoryBankNotes`) — entire view registration removed from `package.json`
@@ -33,6 +33,9 @@ All notable changes to this project are documented here. Each component (extensi
 #### Changed
 - Sidebar has 3 views: Tasks, Decisions, Files (was 4 with Notes)
 - Knowledge graph legend: 4 colors (core, task, decision, structure)
+- **`.env` is now single source of truth for versions** (ADR-0026) — `EXT_VERSION` + `MCP_VERSION` in `.env`; `sync-versions.js` reads from `.env` and propagates to `package.json`, MEMORY.md, sidebar title
+- `scripts/sync-versions.js` rewritten: reads `.env`, detects drift in report mode
+- `extension/scripts/auto-version.js` reads `EXT_VERSION` from `.env`
 
 ### Copilot Plugin v0.5.1 — Notes References Removed (ADR-0025)
 
