@@ -15,7 +15,7 @@ export function registerMemoryRecall(server: McpServer): void {
     {
       budget: z.number().min(500).max(100000).optional().describe("Token budget (default 8000). ~4000 for quick orientation, ~8000 for working context, ~16000+ for deep review. Content is truncated to fit."),
       priority: z.enum(["foundational", "recent", "active"]).optional().describe(
-        "Priority strategy (default 'active'): 'foundational' = project overview first (projectbrief), then notes, tasks, decisions, 'recent' = most recently updated items first, 'active' = in-progress tasks + proposed decisions + projectbrief first",
+        "Priority strategy (default 'active'): 'foundational' = project overview first (projectbrief), then tasks, decisions, 'recent' = most recently updated items first, 'active' = in-progress tasks + proposed decisions + projectbrief first",
       ),
     },
     async ({ budget, priority }) => {
@@ -72,9 +72,7 @@ function getOrderedItems(all: ParsedItem[], strategy: string): ParsedItem[] {
         if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
         if (aIdx !== -1) return -1;
         if (bIdx !== -1) return 1;
-        // notes before tasks, tasks before decisions
-        if (a.type === "note" && b.type !== "note") return -1;
-        if (b.type === "note" && a.type !== "note") return 1;
+        // tasks before decisions
         if (a.type === "task" && b.type === "decision") return -1;
         if (a.type === "decision" && b.type === "task") return 1;
         return 0;
@@ -108,7 +106,6 @@ function getActivePriority(item: ParsedItem): number {
   if (item.type === "task" && item.status === "In Progress") return 0;
   if (item.type === "decision" && item.status === "Proposed") return 1;
   if (item.id === "projectbrief") return 2;
-  if (item.type === "note") return 3;
-  if (item.type === "task") return 4;
-  return 5;
+  if (item.type === "task") return 3;
+  return 4;
 }

@@ -1,4 +1,4 @@
-export type ItemType = "core" | "task" | "decision" | "note" | "structure";
+export type ItemType = "core" | "task" | "decision" | "structure";
 
 export type TaskStatus = "Pending" | "In Progress" | "Completed" | "Abandoned";
 

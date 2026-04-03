@@ -46,7 +46,7 @@ export class MemoryBankTreeProvider
         if (type !== vscode.FileType.File) continue;
         if (!name.endsWith(".md")) continue;
         if (EXPECTED_FILES.includes(name)) continue;
-        if (/^(TASK-|ADR-|NOTE-)/.test(name)) continue; // shown in other views
+        if (/^(TASK-|ADR-)/.test(name)) continue; // shown in other views
 
         const fileUri = vscode.Uri.joinPath(this.mbRoot, name);
         const label = name.replace(".md", "");

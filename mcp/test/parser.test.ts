@@ -20,8 +20,8 @@ describe("deriveId", () => {
     expect(deriveId("decisions/ADR-0001-use-sqlite.md")).toBe("ADR-0001");
   });
 
-  it("extracts NOTE ID from filename", () => {
-    expect(deriveId("NOTE-001-api-patterns.md")).toBe("NOTE-001");
+  it("extracts NOTE ID from filename (legacy — treated as plain stem)", () => {
+    expect(deriveId("NOTE-001-api-patterns.md")).toBe("NOTE-001-api-patterns");
   });
 
   it("uses full stem for core files", () => {
@@ -49,30 +49,29 @@ describe("deriveType", () => {
     expect(deriveType("projectbrief.md")).toBe("core");
   });
 
-  it('returns "note" for eliminated v1 core files (ADR-0015 §7)', () => {
-    expect(deriveType("activeContext.md")).toBe("note");
-    expect(deriveType("progress.md")).toBe("note");
-    expect(deriveType("productContext.md")).toBe("note");
-    expect(deriveType("systemPatterns.md")).toBe("note");
-    expect(deriveType("techContext.md")).toBe("note");
+  it('returns "structure" for eliminated v1 core files (ADR-0025)', () => {
+    expect(deriveType("activeContext.md")).toBe("structure");
+    expect(deriveType("progress.md")).toBe("structure");
+    expect(deriveType("productContext.md")).toBe("structure");
+    expect(deriveType("systemPatterns.md")).toBe("structure");
+    expect(deriveType("techContext.md")).toBe("structure");
   });
 
   it('returns "structure" for README.md', () => {
     expect(deriveType("README.md")).toBe("structure");
   });
 
-  it('returns "note" for unknown root-level files', () => {
-    expect(deriveType("random.md")).toBe("note");
+  it('returns "structure" for unknown root-level files', () => {
+    expect(deriveType("random.md")).toBe("structure");
   });
 
   it('returns type from frontmatter when provided', () => {
-    expect(deriveType("some-file.md", "note")).toBe("note");
     expect(deriveType("some-file.md", "task")).toBe("task");
     expect(deriveType("some-file.md", "decision")).toBe("decision");
   });
 
-  it('returns "note" for NOTE-NNN files in flat layout', () => {
-    expect(deriveType("NOTE-001-api-patterns.md")).toBe("note");
+  it('returns "structure" for NOTE-NNN files in flat layout (ADR-0025)', () => {
+    expect(deriveType("NOTE-001-api-patterns.md")).toBe("structure");
   });
 
   it('returns "task" for TASK-NNN files in flat layout', () => {
@@ -247,8 +246,8 @@ related:
 Some content about API patterns.`;
     const parsed = parseMarkdownFile("NOTE-001-api-patterns.md", content);
 
-    expect(parsed.id).toBe("NOTE-001");
-    expect(parsed.type).toBe("note");
+    expect(parsed.id).toBe("NOTE-001-api-patterns");
+    expect(parsed.type).toBe("structure");
     expect(parsed.tags).toContain("backend");
     expect(parsed.tags).toContain("api");
     expect(parsed.related).toContain("ADR-0001");
@@ -317,6 +316,49 @@ Content about #backend and #frontend.`;
     expect(parsed.id).toBe("TASK-010");
     expect(parsed.type).toBe("task");
     expect(parsed.status).toBe("In Progress");
+  });
+});
+
+// ── ADR-0025: NOTE type removal ─────────────────────────────────────
+
+describe("ADR-0025: NOTE type removed", () => {
+  it("rejects 'note' as frontmatter type — falls back to path-based detection", () => {
+    expect(deriveType("some-file.md", "note")).toBe("structure");
+  });
+
+  it("NOTE-NNN filenames get no special ID extraction", () => {
+    expect(deriveId("NOTE-001.md")).toBe("NOTE-001");
+    expect(deriveId("NOTE-042-some-title.md")).toBe("NOTE-042-some-title");
+  });
+
+  it("NOTE-NNN files are classified as structure, not note", () => {
+    expect(deriveType("NOTE-001.md")).toBe("structure");
+    expect(deriveType("NOTE-042-api-patterns.md")).toBe("structure");
+  });
+
+  it("parseMarkdownFile with type:note frontmatter produces structure item", () => {
+    const content = `---\ntype: note\ntags: [backend]\n---\n\n# NOTE-001: API Patterns\n\nContent.`;
+    const parsed = parseMarkdownFile("NOTE-001.md", content);
+
+    expect(parsed.type).toBe("structure");
+    expect(parsed.id).toBe("NOTE-001");
+  });
+
+  it("ItemType union has exactly 4 values — core, task, decision, structure", () => {
+    const validTypes: string[] = ["core", "task", "decision", "structure"];
+    for (const t of validTypes) {
+      // Valid types are accepted by deriveType
+      expect(deriveType("test.md", t)).toBe(t);
+    }
+    // "note" is rejected
+    expect(deriveType("test.md", "note")).toBe("structure");
+  });
+
+  it("cross-ref regex does not match NOTE-NNN patterns", () => {
+    const refs = extractCrossRefs("See NOTE-001 and TASK-001 and ADR-0001.");
+    expect(refs).not.toContain("NOTE-001");
+    expect(refs).toContain("TASK-001");
+    expect(refs).toContain("ADR-0001");
   });
 });
 

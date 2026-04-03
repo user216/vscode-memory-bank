@@ -9,7 +9,7 @@ export function registerMemorySearch(server: McpServer): void {
     "Full-text search across all memory bank content using MiniSearch. Returns matching items with highlighted excerpts (>>> / <<<). Use this for keyword/phrase searches. For filtering by status or date, use memory_query instead.",
     {
       query: z.string().describe("Search query string. Examples: 'authentication', 'oauth google', 'deploy'. Supports prefix matching (auto-enabled), fuzzy matching, and multi-term search. Case-insensitive."),
-      type: z.enum(["core", "task", "decision", "note", "structure"]).optional().describe("Filter by item type: 'core' (context files), 'task' (TASK-NNN), 'decision' (ADR-NNNN), 'note' (NOTE-NNN)"),
+      type: z.enum(["core", "task", "decision", "structure"]).optional().describe("Filter by item type: 'core' (context files), 'task' (TASK-NNN), 'decision' (ADR-NNNN)"),
       limit: z.number().min(1).max(50).optional().describe("Maximum results (default 10)"),
     },
     async ({ query, type, limit }) => {

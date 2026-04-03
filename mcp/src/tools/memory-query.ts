@@ -8,7 +8,7 @@ export function registerMemoryQuery(server: McpServer): void {
     "memory_query",
     "Structured query of memory bank items by type, status, or date range. Returns matching items with metadata. All filters combine with AND logic. Call with no parameters to list all items. For keyword search, use memory_search instead.",
     {
-      type: z.enum(["core", "task", "decision", "note", "structure"]).optional().describe("Filter by item type: 'core' (context files), 'task' (TASK-NNN), 'decision' (ADR-NNNN), 'note' (NOTE-NNN)"),
+      type: z.enum(["core", "task", "decision", "structure"]).optional().describe("Filter by item type: 'core' (context files), 'task' (TASK-NNN), 'decision' (ADR-NNNN)"),
       status: z.string().optional().describe("Filter by status (case-sensitive, exact match). Tasks: 'Pending', 'In Progress', 'Completed', 'Abandoned'. Decisions: 'Proposed', 'Accepted', 'Deprecated', 'Superseded', 'Rejected'."),
       since: z.string().optional().describe("Items updated on or after this date (ISO format: YYYY-MM-DD, e.g. '2026-01-15')"),
       until: z.string().optional().describe("Items updated on or before this date (ISO format: YYYY-MM-DD, e.g. '2026-03-01')"),

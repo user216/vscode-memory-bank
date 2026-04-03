@@ -4,7 +4,6 @@ import * as path from "node:path";
 import { MemoryBankTreeProvider } from "./sidebar/tree-provider.js";
 import { TasksTreeProvider } from "./sidebar/tasks-provider.js";
 import { DecisionsTreeProvider } from "./sidebar/decisions-provider.js";
-import { NotesTreeProvider } from "./sidebar/notes-provider.js";
 import { MemoryBankStatusBar } from "./statusbar/status-bar.js";
 import { McpServerManager } from "./mcp/server-manager.js";
 import { McpServerBootstrap } from "./mcp/server-bootstrap.js";
@@ -22,7 +21,6 @@ const providers: Providers = {
   filesProvider: undefined,
   tasksProvider: undefined,
   decisionsProvider: undefined,
-  notesProvider: undefined,
   statusBar: undefined,
   mcpManager: undefined,
   mbRoot: undefined as unknown as vscode.Uri,
@@ -43,7 +41,6 @@ async function initializeFullUI(
   const filesProvider = new MemoryBankTreeProvider(mbRoot);
   const tasksProvider = new TasksTreeProvider(mbRoot);
   const decisionsProvider = new DecisionsTreeProvider(mbRoot);
-  const notesProvider = new NotesTreeProvider(mbRoot);
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("memoryBankFiles", filesProvider),
@@ -61,7 +58,6 @@ async function initializeFullUI(
       "memoryBankDecisions",
       decisionsProvider,
     ),
-    vscode.window.registerTreeDataProvider("memoryBankNotes", notesProvider),
   );
 
   // Status bar
@@ -99,7 +95,6 @@ async function initializeFullUI(
       filesProvider.refresh();
       tasksProvider.refresh();
       decisionsProvider.refresh();
-      notesProvider.refresh();
       statusBar?.refresh();
     };
     fileWatcher.onDidChange(refreshAll);
@@ -116,7 +111,6 @@ async function initializeFullUI(
   providers.filesProvider = filesProvider;
   providers.tasksProvider = tasksProvider;
   providers.decisionsProvider = decisionsProvider;
-  providers.notesProvider = notesProvider;
   providers.statusBar = statusBar;
   providers.mcpManager = mcpManager;
   providers.mbRoot = mbRoot;
@@ -155,7 +149,6 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerTreeDataProvider("memoryBankFiles", emptyProvider),
     vscode.window.registerTreeDataProvider("memoryBankTasks", emptyProvider),
     vscode.window.registerTreeDataProvider("memoryBankDecisions", emptyProvider),
-    vscode.window.registerTreeDataProvider("memoryBankNotes", emptyProvider),
     vscode.window.registerTreeDataProvider("memoryBankMcpSetup", emptyProvider),
   ];
 

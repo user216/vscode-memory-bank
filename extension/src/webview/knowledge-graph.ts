@@ -102,10 +102,9 @@ export class KnowledgeGraphPanel {
         let type: string;
         if (/^TASK-\d+/.test(name)) type = "task";
         else if (/^ADR-\d+/.test(name)) type = "decision";
-        else if (/^NOTE-\d+/.test(name)) type = "note";
         else if (name === "projectbrief.md") type = "core";
         else if (name === "README.md") type = "structure";
-        else type = "note";
+        else type = "structure";
 
         const node: GraphNode = { id, type, title };
         nodes.push(node);
@@ -166,7 +165,6 @@ export class KnowledgeGraphPanel {
     // v2 flat layout: all files at root
     if (/^TASK-\d+$/.test(node.id)) return vscode.Uri.joinPath(this.mbRoot, `${node.id}.md`);
     if (/^ADR-\d+$/.test(node.id)) return vscode.Uri.joinPath(this.mbRoot, `${node.id}.md`);
-    if (/^NOTE-\d+$/.test(node.id)) return vscode.Uri.joinPath(this.mbRoot, `${node.id}.md`);
     return vscode.Uri.joinPath(this.mbRoot, `${node.id}.md`);
   }
 
@@ -224,7 +222,6 @@ export class KnowledgeGraphPanel {
   <div><span class="dot" style="background:#4fc1ff"></span> Core</div>
   <div><span class="dot" style="background:#6a9955"></span> Task</div>
   <div><span class="dot" style="background:#dcdcaa"></span> Decision</div>
-  <div><span class="dot" style="background:#c586c0"></span> Note</div>
   <div><span class="dot" style="background:#569cd6"></span> Structure</div>
 </div>
 <div id="tooltip"></div>
@@ -244,7 +241,7 @@ function resize() {
 resize();
 window.addEventListener('resize', () => { resize(); });
 
-const COLORS = { core: '#4fc1ff', task: '#6a9955', decision: '#dcdcaa', note: '#c586c0', structure: '#569cd6' };
+const COLORS = { core: '#4fc1ff', task: '#6a9955', decision: '#dcdcaa', structure: '#569cd6' };
 const RADIUS = 22;
 
 // Position nodes in a force-directed-ish layout using initial circle placement + iterations

@@ -75,8 +75,8 @@ export function extractTitle(content: string, fileId: string): string {
   const h1Match = content.match(/^#\s+(.+)$/m);
   if (h1Match) {
     const heading = h1Match[1].trim();
-    // Strip ID prefix like "TASK-001: " or "ADR-0001: " or "NOTE-001: "
-    const stripped = heading.replace(/^(TASK-\d+|ADR-\d{4}|NOTE-\d+):\s*/, "");
+    // Strip ID prefix like "TASK-001: " or "ADR-0001: "
+    const stripped = heading.replace(/^(TASK-\d+|ADR-\d{4}):\s*/, "");
     if (stripped && stripped !== heading) {
       return stripped;
     }
@@ -122,11 +122,11 @@ function extractRelated(content: string): string[] {
   return related;
 }
 
-/** Extract cross-references (TASK-NNN, ADR-NNNN, NOTE-NNN) from body text. */
+/** Extract cross-references (TASK-NNN, ADR-NNNN) from body text. */
 function extractCrossRefs(content: string, selfId: string): string[] {
   // Get body after frontmatter
   const body = content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
-  const matches = body.match(/\b(TASK-\d{3}|ADR-\d{4}|NOTE-\d{3})\b/g);
+  const matches = body.match(/\b(TASK-\d{3}|ADR-\d{4})\b/g);
   if (!matches) return [];
   return [...new Set(matches)].filter((id) => id !== selfId);
 }
@@ -174,7 +174,7 @@ export function buildDescription(parts: string[]): string {
   return parts.filter(Boolean).join(" \u00B7 ");
 }
 
-/** Tree item for relation children (expandable under tasks/decisions/notes). */
+/** Tree item for relation children (expandable under tasks/decisions). */
 export class RelationItem extends vscode.TreeItem {
   constructor(
     public readonly targetId: string,

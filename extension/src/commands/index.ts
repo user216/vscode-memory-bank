@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import type { MemoryBankTreeProvider } from "../sidebar/tree-provider.js";
 import type { TasksTreeProvider } from "../sidebar/tasks-provider.js";
 import type { DecisionsTreeProvider } from "../sidebar/decisions-provider.js";
-import type { NotesTreeProvider } from "../sidebar/notes-provider.js";
 import type { MemoryBankStatusBar } from "../statusbar/status-bar.js";
 import type { McpServerManager } from "../mcp/server-manager.js";
 import { buildMcpConfigSnippet } from "../mcp/config-generator.js";
@@ -12,7 +11,6 @@ export interface Providers {
   filesProvider: MemoryBankTreeProvider | undefined;
   tasksProvider: TasksTreeProvider | undefined;
   decisionsProvider: DecisionsTreeProvider | undefined;
-  notesProvider: NotesTreeProvider | undefined;
   statusBar: MemoryBankStatusBar | undefined;
   mcpManager: McpServerManager | undefined;
   mbRoot: vscode.Uri;
@@ -29,7 +27,6 @@ export function registerCommands(
       providers.filesProvider?.refresh();
       providers.tasksProvider?.refresh();
       providers.decisionsProvider?.refresh();
-      providers.notesProvider?.refresh();
       providers.statusBar?.refresh();
     }),
 
@@ -71,7 +68,7 @@ export function registerCommands(
         "projectbrief.md":
           `---\ntype: core\ntitle: Project Brief\ncreated: ${today}\nupdated: ${today}\ntags: [overview]\n---\n# Project Brief\n\n## Overview\n\n_Describe the project here._\n\n## Goals\n\n- \n\n## Non-Goals\n\n- \n`,
         "README.md":
-          `---\ntype: structure\ntitle: Memory Bank Index\ncreated: ${today}\nupdated: ${today}\n---\n# Memory Bank\n\nProject map and navigation.\n\n- [[projectbrief]] — Project overview, goals, constraints\n\n## Tasks\n\n_Use \`memory_create_task\` or create TASK-NNN.md files._\n\n## Decisions\n\n_Use \`memory_create_decision\` or create ADR-NNNN.md files._\n\n## Notes\n\n_Use \`memory_create_note\` for knowledge items, patterns, and reference material._\n`,
+          `---\ntype: structure\ntitle: Memory Bank Index\ncreated: ${today}\nupdated: ${today}\n---\n# Memory Bank\n\nProject map and navigation.\n\n- [[projectbrief]] — Project overview, goals, constraints\n\n## Tasks\n\n_Use \`memory_create_task\` or create TASK-NNN.md files._\n\n## Decisions\n\n_Use \`memory_create_decision\` or create ADR-NNNN.md files._\n`,
       };
 
       for (const [filename, content] of Object.entries(coreFiles)) {
@@ -100,7 +97,6 @@ export function registerCommands(
       providers.filesProvider?.refresh();
       providers.tasksProvider?.refresh();
       providers.decisionsProvider?.refresh();
-      providers.notesProvider?.refresh();
       providers.statusBar?.refresh();
     }),
 

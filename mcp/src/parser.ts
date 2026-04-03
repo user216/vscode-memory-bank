@@ -18,10 +18,6 @@ export function deriveId(filePath: string): string {
   const adrMatch = stem.match(/^(ADR-\d{4})/);
   if (adrMatch) return adrMatch[1];
 
-  // NOTE-001-some-title → NOTE-001
-  const noteMatch = stem.match(/^(NOTE-\d{3})/);
-  if (noteMatch) return noteMatch[1];
-
   // projectbrief.md → projectbrief
   return stem;
 }
@@ -29,7 +25,7 @@ export function deriveId(filePath: string): string {
 export function deriveType(filePath: string, frontmatterType?: string): ItemType {
   // YAML frontmatter type takes precedence
   if (frontmatterType) {
-    const validTypes: ItemType[] = ["core", "task", "decision", "note", "structure"];
+    const validTypes: ItemType[] = ["core", "task", "decision", "structure"];
     if (validTypes.includes(frontmatterType as ItemType)) {
       return frontmatterType as ItemType;
     }
@@ -43,13 +39,11 @@ export function deriveType(filePath: string, frontmatterType?: string): ItemType
   const basename = path.basename(filePath);
   if (basename.match(/^TASK-\d{3}/)) return "task";
   if (basename.match(/^ADR-\d{4}/)) return "decision";
-  if (basename.match(/^NOTE-\d{3}/)) return "note";
-
-  // ADR-0015 §7: only projectbrief is "core"; README is "structure"; all others are "note"
+  // ADR-0015/ADR-0025: only projectbrief is "core"; README is "structure"
   const stem = basename.replace(/\.md$/, "");
   if (stem === "projectbrief") return "core";
   if (stem === "README") return "structure";
-  return "note";
+  return "structure";
 }
 
 export function deriveTitle(id: string, content: string): string {

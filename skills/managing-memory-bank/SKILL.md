@@ -3,7 +3,7 @@ name: managing-memory-bank
 description: >-
   Maintain AI project memory across sessions via structured documentation.
   Use when initializing Memory Bank for new/existing projects, updating
-  memory bank docs (projectbrief, tasks, decisions, notes),
+  memory bank docs (projectbrief, tasks, decisions),
   managing task files, creating ADRs, or reviewing context before starting work.
   Also use when the user says "update memory bank".
 argument-hint: describe what you want to do with the memory bank
@@ -30,10 +30,9 @@ The memory bank supports two directory layouts:
 ```
 memory-bank/
 ├── projectbrief.md        ← project overview
-├── README.md              ← structure note
+├── README.md              ← structure file
 ├── TASK-001.md             ← task files (flat)
 ├── ADR-0001.md             ← decision files (flat)
-├── NOTE-001.md             ← knowledge notes
 └── .mcp/                   ← tooling artifacts (gitignored)
 ```
 
@@ -81,7 +80,6 @@ Use templates from: [projectbrief template](./templates/projectbrief.md), [task 
    - README.md (structure)
    - TASK-*.md files (active tasks)
    - ADR-*.md files (decisions)
-   - NOTE-*.md files (notes)
 2. Summarize current state to user
 3. Ask if context is still accurate
 
@@ -113,13 +111,6 @@ When an architectural or design decision is made:
 2. Document context, decision, alternatives considered, consequences
 3. Use `memory_link` to connect ADR to implementing tasks (if MCP available)
 4. ADRs are immutable once accepted — to change, create a new ADR that supersedes
-
-### Create Knowledge Notes (v2)
-For atomic knowledge capture:
-1. Use `memory_create_note` to create `NOTE-NNN.md` with YAML frontmatter
-2. Add tags for categorization
-3. Use wikilinks `[[ID]]` to reference related items
-4. Link to ADRs and tasks via `memory_link`
 
 ### Search and Explore
 - **Full-text search**: `memory_search` — MiniSearch with BM25 ranking, prefix/fuzzy matching
@@ -161,7 +152,6 @@ updated: 2026-03-27
 | Structured query | `memory_query` | Filter by type, status, date |
 | Create task | `memory_create_task` | Auto-ID, formatted file |
 | Create decision | `memory_create_decision` | Auto-ID, ADR format |
-| Create note | `memory_create_note` | Auto-ID, YAML frontmatter |
 | Update status | `memory_update_status` | Validated status changes |
 | Bulk update status | `memory_bulk_update_status` | Batch status updates (up to 50) |
 | Add tag | `memory_add_tag` | Add tags to YAML frontmatter |

@@ -31,10 +31,9 @@ export function registerMemorySchema(server: McpServer): void {
 
       const schema = {
         itemTypes: {
-          core: "Project overview file (projectbrief.md). Legacy v1 context files are classified as 'note' if present.",
+          core: "Project overview file (projectbrief.md).",
           task: "Task files with status lifecycle: Pending → In Progress → Completed / Abandoned",
           decision: "ADR files with status lifecycle: Proposed → Accepted → Deprecated / Superseded / Rejected",
-          note: "General-purpose notes with YAML frontmatter and tags",
         },
         currentCounts: typeCounts,
         statusValues: Array.from(statusSet).sort(),
@@ -54,7 +53,6 @@ export function registerMemorySchema(server: McpServer): void {
           memory_schema: "This tool — describes the data model",
           memory_create_task: "Create a new task with auto-generated ID, proper formatting, and index update",
           memory_create_decision: "Create a new ADR decision with auto-generated ID, proper formatting, and index update",
-          memory_create_note: "Create a new note with auto-generated ID, YAML frontmatter, and tags",
           memory_import_decisions: "Import ADR files from an external directory or re-sync existing decisions",
           memory_update_status: "Update task/decision status with validation and optional log entry",
           memory_update_decision: "Update content of an existing ADR (title, context, decision, alternatives, consequences)",

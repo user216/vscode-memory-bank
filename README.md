@@ -1,6 +1,6 @@
 # vscode-memory-bank
 
-Persistent AI project memory for **VS Code + GitHub Copilot + Claude Code**. Gives AI coding sessions structured context that survives across sessions — tasks, decisions, knowledge notes, and a knowledge graph, all in markdown.
+Persistent AI project memory for **VS Code + GitHub Copilot + Claude Code**. Gives AI coding sessions structured context that survives across sessions — tasks, decisions, and a knowledge graph, all in markdown.
 
 ## The Problem
 
@@ -68,7 +68,6 @@ memory-bank/
   README.md              # Navigation index with wikilinks
   TASK-001.md            # Task files with status, tags, progress logs
   ADR-0001.md            # Architecture Decision Records
-  NOTE-001.md            # Knowledge notes with tags and cross-references
 ```
 
 Example frontmatter:
@@ -78,7 +77,7 @@ Example frontmatter:
 type: task
 status: In Progress
 tags: [backend, auth]
-related: [ADR-0001, NOTE-003]
+related: [ADR-0001]
 created: 2026-03-15
 ---
 # TASK-014: Implement OAuth2 login flow
@@ -88,14 +87,14 @@ created: 2026-03-15
 
 The extension provides:
 
-- **Sidebar** — browse tasks (sorted by status), decisions, notes, and files with titles, tags, and expandable relations
+- **Sidebar** — browse tasks (sorted by status), decisions, and files with titles, tags, and expandable relations
 - **Knowledge Graph** — interactive force-directed visualization of item relationships
 - **Status Bar** — shows current focus derived from in-progress tasks
 - **MCP Setup** — auto-configures the MCP server for GitHub Copilot; one-click copy for Claude Code
 
 ## MCP Server
 
-21 tools for structured memory access. The server uses an in-memory MiniSearch index with BM25 ranking — zero native dependencies.
+20 tools for structured memory access. The server uses an in-memory MiniSearch index with BM25 ranking — zero native dependencies.
 
 | Tool | Purpose |
 |------|---------|
@@ -104,7 +103,6 @@ The extension provides:
 | `memory_query` | Structured query by type, status, date range |
 | `memory_create_task` | Create task with auto-generated TASK-NNN ID |
 | `memory_create_decision` | Create ADR with standard format and auto-generated ID |
-| `memory_create_note` | Create knowledge note with tags and related links |
 | `memory_update_status` | Update task/decision status with timestamped progress logs |
 | `memory_bulk_update_status` | Batch status updates for multiple items |
 | `memory_add_tag` | Add a tag to any item's YAML frontmatter |

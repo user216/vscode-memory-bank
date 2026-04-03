@@ -126,9 +126,11 @@ describe("Tool Integration Tests", () => {
       });
 
       expect(sorted[0].id).toBe("projectbrief");
-      // After projectbrief, notes come before tasks/decisions
-      const firstNonBrief = sorted.find((i) => i.id !== "projectbrief");
-      expect(firstNonBrief?.type).toBe("note");
+      // After projectbrief, tasks come next in foundational ordering
+      const types = sorted.map(i => i.type);
+      const taskIdx = types.indexOf("task");
+      const decisionIdx = types.indexOf("decision");
+      expect(taskIdx).toBeLessThan(decisionIdx);
     });
 
     it("active strategy orders in-progress tasks first (ADR-0015)", () => {
@@ -142,9 +144,8 @@ describe("Tool Integration Tests", () => {
         if (item.type === "task" && item.status === "In Progress") return 0;
         if (item.type === "decision" && item.status === "Proposed") return 1;
         if (item.id === "projectbrief") return 2;
-        if (item.type === "note") return 3;
-        if (item.type === "task") return 4;
-        return 5;
+        if (item.type === "task") return 3;
+        return 4;
       }
 
       const sorted = [...items].sort(
@@ -235,6 +236,45 @@ describe("Tool Integration Tests", () => {
     });
   });
 
+  describe("ADR-0025: NOTE type removed", () => {
+    it("no items have type 'note' in the store", () => {
+      const noteItems = Array.from(store.items.values()).filter((i) => i.type === "note");
+      expect(noteItems).toHaveLength(0);
+    });
+
+    it("NOTE-NNN fixture files are classified as structure", () => {
+      // NOTE-001 from fixtures should be type=structure, not note
+      const note = store.items.get("NOTE-001-api-patterns");
+      if (note) {
+        expect(note.type).toBe("structure");
+      }
+    });
+
+    it("active priority has no note tier (4-tier only)", () => {
+      function getActivePriority(item: { id: string; type: string; status: string | null }): number {
+        if (item.type === "task" && item.status === "In Progress") return 0;
+        if (item.type === "decision" && item.status === "Proposed") return 1;
+        if (item.id === "projectbrief") return 2;
+        if (item.type === "task") return 3;
+        return 4; // everything else (structure, core) — no note tier
+      }
+
+      // Verify no gap in priority numbering (0,1,2,3,4 — no 5)
+      const structureItem = { id: "README", type: "structure", status: null };
+      const taskInProgress = { id: "TASK-001", type: "task", status: "In Progress" };
+      expect(getActivePriority(structureItem)).toBe(4);
+      expect(getActivePriority(taskInProgress)).toBe(0);
+    });
+
+    it("type counts have no 'note' key", () => {
+      const typeCounts: Record<string, number> = {};
+      for (const item of store.items.values()) {
+        typeCounts[item.type] = (typeCounts[item.type] || 0) + 1;
+      }
+      expect(typeCounts["note"]).toBeUndefined();
+    });
+  });
+
   describe("memory_schema", () => {
     it("reports correct item type counts", () => {
       const typeCounts: Record<string, number> = {};
@@ -243,7 +283,7 @@ describe("Tool Integration Tests", () => {
       }
 
       expect(typeCounts.core).toBe(1); // only projectbrief (ADR-0015 §7)
-      expect(typeCounts.note).toBe(6); // 5 legacy core files + NOTE-001
+      expect(typeCounts.structure).toBe(6); // 5 legacy core files + NOTE-001
       expect(typeCounts.task).toBe(2);
       expect(typeCounts.decision).toBe(1);
     });

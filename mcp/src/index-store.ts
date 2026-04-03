@@ -341,7 +341,7 @@ export function watchMemoryBank(s: IndexStore): fs.FSWatcher {
 
       if (!fs.existsSync(fullPath)) {
         // File deleted — remove from index
-        const id = path.basename(filename, ".md").match(/^(TASK-\d{3}|ADR-\d{4}|NOTE-\d{3})/)?.[1]
+        const id = path.basename(filename, ".md").match(/^(TASK-\d{3}|ADR-\d{4})/)?.[1]
           || path.basename(filename, ".md");
         if (s.items.has(id)) {
           removeItemFromStore(s, id);

@@ -30,7 +30,6 @@ When Memory Bank MCP tools are available, **always prefer them** over reading ra
 | Explore connections | `memory_graph` (BFS traversal) | Read files and follow references |
 | Discover data model | `memory_schema` | Inspect folder structure |
 | Create new task | `memory_create_task` (auto-ID, formatting) | Create file manually |
-| Create new note | `memory_create_note` (auto-ID, YAML frontmatter) | Create file manually |
 | Create new decision | `memory_create_decision` (auto-ID, formatting) | Create file manually |
 | Update item status | `memory_update_status` (validated) | Edit Status field in file |
 | Bulk update status | `memory_bulk_update_status` (batch) | Edit each file manually |
@@ -54,10 +53,9 @@ The memory bank supports two directory layouts:
 ```
 memory-bank/
 ├── projectbrief.md        ← project overview (the ONE required file)
-├── README.md              ← structure note
+├── README.md              ← structure file
 ├── TASK-001.md             ← task files (flat)
 ├── ADR-0001.md             ← decision files (flat)
-├── NOTE-001.md             ← knowledge notes
 └── .gitignore               ← ignores tooling artifacts
 ```
 
@@ -106,12 +104,11 @@ updated: 2026-03-27
 
 ### Core Files (Required)
 - **projectbrief.md** — Foundation document that shapes all other files. Defines project scope, goals, non-goals, and success criteria.
-- **README.md** — Structure note describing the memory bank layout.
+- **README.md** — Structure file describing the memory bank layout.
 
 ### Generated Content (created via MCP tools or manually)
 - **TASK-NNN.md** — Tasks with status lifecycle: Pending → In Progress → Completed / Abandoned
 - **ADR-NNNN.md** — Architectural Decision Records: Proposed → Accepted → Deprecated / Superseded
-- **NOTE-NNN.md** — Atomic knowledge notes with tags (replace v1 monolithic context files).
 
 ## Core Workflows
 
@@ -158,7 +155,6 @@ Create an ADR via `memory_create_decision` or direct file creation whenever:
 - **Check `memory_status`** to see computed progress dashboard
 
 ### General Documentation Updates
-- Discovering new project patterns
 - After significant implementation changes
 - When user explicitly requests "update memory bank"
 - When context needs clarification
@@ -265,26 +261,6 @@ Considered because... Rejected because...
 ## Consequences
 [What follows]
 ```
-
-## Knowledge Notes (v2)
-
-### Note File Structure
-```markdown
----
-type: note
-tags: [api-patterns, backend]
-related: [ADR-0003, TASK-012]
-created: 2026-03-27
-updated: 2026-03-27
----
-# NOTE-NNN: Topic Title
-
-Content about this specific topic or pattern.
-
-References [[ADR-0003]] for the relevant decision.
-```
-
-Notes replace the v1 approach of large monolithic files (`productContext.md`, `systemPatterns.md`, `techContext.md`). Each note captures one atomic concept, linked to others via wikilinks and tags.
 
 ---
 

@@ -2,6 +2,45 @@
 
 All notable changes to this project are documented here. Each component (extension, MCP server, layers) has its own section.
 
+## 2026-04-03
+
+### MCP Server v2.4.0 — NOTE Type Removed (ADR-0025)
+
+#### Removed
+- **`memory_create_note` tool** — NOTE type has no unique niche; knowledge is stored in tasks, decisions, skills, instructions, and AI auto-memory
+- **`"note"` from `ItemType`** — type union is now `"core" | "task" | "decision" | "structure"`
+- **NOTE-NNN ID extraction** from `deriveId()` — NOTE filenames treated as plain stems
+- **NOTE-NNN filename detection** from `deriveType()` — NOTE files classified as `"structure"`
+- **`"note"` from type filter enums** in `memory_query` and `memory_search`
+- **Note tier** from `memory_recall` active priority (4-tier: in-progress tasks → proposed decisions → projectbrief → other tasks → rest)
+- **Note count** from `memory_status` output
+- **`memory_create_note`** from `memory_schema` tools list and `"note"` from item types
+
+#### Changed
+- `deriveType()` fallback for unknown files changed from `"note"` to `"structure"`
+- `memory_add_tag` example updated: `NOTE-001` removed from ID examples
+- `memory_migrate_v1` warning messages no longer reference notes
+- Tool count: 21 → 20
+
+### Extension v0.7.0 — Notes Sidebar Removed (ADR-0025)
+
+#### Removed
+- **Notes sidebar view** (`memoryBankNotes`) — entire view registration removed from `package.json`
+- **`NotesTreeProvider`** (`extension/src/sidebar/notes-provider.ts`) — deleted
+- **Note type** from knowledge graph colors and legend
+- **`NOTE-` pattern** from tree-provider filter, frontmatter-utils cross-ref regex, knowledge graph URI resolution
+
+#### Changed
+- Sidebar has 3 views: Tasks, Decisions, Files (was 4 with Notes)
+- Knowledge graph legend: 4 colors (core, task, decision, structure)
+
+### Copilot Plugin v0.5.1 — Notes References Removed (ADR-0025)
+
+#### Changed
+- All skills, instructions, agents, and prompts updated to remove NOTE references
+- `memory_create_note` removed from MCP tools tables
+- `NOTE-*.md` removed from file scanning fallback lists and directory layout diagrams
+
 ## 2026-03-28
 
 ### Extension v0.6.3 — MCP Server Key Rename & Version Display

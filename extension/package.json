@@ -60,11 +60,6 @@
           "when": "memoryBank.initialized"
         },
         {
-          "id": "memoryBankNotes",
-          "name": "Notes",
-          "when": "memoryBank.initialized"
-        },
-        {
           "id": "memoryBankMcpSetup",
           "name": "MCP Setup",
           "when": "memoryBank.initialized"
