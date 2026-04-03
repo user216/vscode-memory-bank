@@ -134,5 +134,24 @@ export function registerCommands(
         );
       },
     ),
+
+    vscode.commands.registerCommand("memoryBank.filterTasksByTag", async () => {
+      const tags = await providers.tasksProvider?.getAllTags();
+      if (!tags?.length) {
+        vscode.window.showInformationMessage("No tags found on tasks.");
+        return;
+      }
+      const picked = await vscode.window.showQuickPick(
+        tags.map((t) => ({ label: `#${t}` })),
+        { placeHolder: "Select a tag to filter tasks" },
+      );
+      if (picked) {
+        providers.tasksProvider?.filterByTag(picked.label.slice(1));
+      }
+    }),
+
+    vscode.commands.registerCommand("memoryBank.clearTaskTagFilter", () => {
+      providers.tasksProvider?.clearTagFilter();
+    }),
   );
 }

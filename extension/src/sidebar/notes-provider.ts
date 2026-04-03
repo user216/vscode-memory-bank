@@ -75,7 +75,7 @@ class NoteItem extends vscode.TreeItem {
     mbRoot: vscode.Uri,
   ) {
     super(
-      title,
+      fileId,
       relations.length > 0
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None,
@@ -83,7 +83,7 @@ class NoteItem extends vscode.TreeItem {
     this.relations = relations;
 
     const descParts: string[] = [];
-    if (title !== fileId) descParts.push(fileId);
+    if (title !== fileId) descParts.push(title);
     if (tags.length > 0) descParts.push(tags.join(", "));
     this.description = buildDescription(descParts);
 

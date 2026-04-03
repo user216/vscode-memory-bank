@@ -24,10 +24,52 @@ export class TasksTreeProvider
   >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
+  private activeTagFilter: string | null = null;
+  treeView: vscode.TreeView<TaskItem | RelationItem> | undefined;
+
   constructor(private readonly mbRoot: vscode.Uri) {}
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
+  }
+
+  filterByTag(tag: string): void {
+    this.activeTagFilter = tag;
+    vscode.commands.executeCommand("setContext", "memoryBank.taskTagFilterActive", true);
+    if (this.treeView) {
+      this.treeView.description = `#${tag}`;
+    }
+    this.refresh();
+  }
+
+  clearTagFilter(): void {
+    this.activeTagFilter = null;
+    vscode.commands.executeCommand("setContext", "memoryBank.taskTagFilterActive", false);
+    if (this.treeView) {
+      this.treeView.description = "";
+    }
+    this.refresh();
+  }
+
+  async getAllTags(): Promise<string[]> {
+    const tagSet = new Set<string>();
+    const scan = async (dir: vscode.Uri, pattern?: RegExp) => {
+      try {
+        const entries = await vscode.workspace.fs.readDirectory(dir);
+        for (const [name, type] of entries) {
+          if (type !== vscode.FileType.File || !name.endsWith(".md")) continue;
+          if (pattern && !pattern.test(name)) continue;
+          if (name === "_index.md") continue;
+          const content = Buffer.from(
+            await vscode.workspace.fs.readFile(vscode.Uri.joinPath(dir, name)),
+          ).toString("utf-8");
+          for (const tag of extractTags(content)) tagSet.add(tag);
+        }
+      } catch { /* ignore */ }
+    };
+    await scan(vscode.Uri.joinPath(this.mbRoot, "tasks"));
+    await scan(this.mbRoot, /^TASK-\d+.*\.md$/);
+    return [...tagSet].sort();
   }
 
   getTreeItem(element: TaskItem | RelationItem): vscode.TreeItem {
@@ -94,6 +136,12 @@ export class TasksTreeProvider
       return ap - bp;
     });
 
+    // Apply tag filter
+    if (this.activeTagFilter) {
+      const filter = this.activeTagFilter.toLowerCase();
+      return items.filter((i) => i.tags.some((t) => t.toLowerCase() === filter));
+    }
+
     return items;
   }
 
@@ -110,6 +158,7 @@ class TaskItem extends vscode.TreeItem {
   public readonly relations: Relation[];
   public readonly status: string;
   public readonly fileId: string;
+  public readonly tags: string[];
 
   constructor(
     fileId: string,
@@ -121,7 +170,7 @@ class TaskItem extends vscode.TreeItem {
     mbRoot: vscode.Uri,
   ) {
     super(
-      title,
+      fileId,
       relations.length > 0
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None,
@@ -129,9 +178,10 @@ class TaskItem extends vscode.TreeItem {
     this.fileId = fileId;
     this.status = status;
     this.relations = relations;
+    this.tags = tags;
 
     const descParts: string[] = [];
-    if (title !== fileId) descParts.push(fileId);
+    if (title !== fileId) descParts.push(title);
     descParts.push(status);
     if (tags.length > 0) descParts.push(tags.join(", "));
     this.description = buildDescription(descParts);

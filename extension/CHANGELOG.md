@@ -1,5 +1,17 @@
 # Changelog — VS Code Extension
 
+## 0.6.5
+
+### Added
+- **Tag filter for Tasks** — filter icon in Tasks view title bar opens a QuickPick with all unique tags; selecting a tag filters the list; clear icon appears when filter is active (ADR-0024)
+- **`memoryBank.filterTasksByTag` command** — opens QuickPick tag selector
+- **`memoryBank.clearTaskTagFilter` command** — clears active tag filter
+- **View description on filter** — Tasks view title shows `#tagname` while a tag filter is active
+
+### Changed
+- **File ID as label** — Tasks, Decisions, and Notes now show the file ID (e.g., `TASK-001`) as the label with title/status/tags in the description (was title as label)
+- **`createTreeView` for Tasks** — switched from `registerTreeDataProvider` to `createTreeView` to support view description/badge on filter
+
 ## 0.6.4
 
 ### Added

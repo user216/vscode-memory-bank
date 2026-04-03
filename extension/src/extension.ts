@@ -47,7 +47,16 @@ async function initializeFullUI(
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("memoryBankFiles", filesProvider),
-    vscode.window.registerTreeDataProvider("memoryBankTasks", tasksProvider),
+  );
+
+  // Use createTreeView for tasks to get TreeView handle (for description/badge on filter)
+  const tasksTreeView = vscode.window.createTreeView("memoryBankTasks", {
+    treeDataProvider: tasksProvider,
+  });
+  tasksProvider.treeView = tasksTreeView;
+  context.subscriptions.push(tasksTreeView);
+
+  context.subscriptions.push(
     vscode.window.registerTreeDataProvider(
       "memoryBankDecisions",
       decisionsProvider,
