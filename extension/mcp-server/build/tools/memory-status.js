@@ -1,10 +1,9 @@
 import { getStore } from "../index-store.js";
 export function registerMemoryStatus(server) {
-    server.tool("memory_status", "Returns computed project status: task counts by status, decision counts by status, note counts, and top tags.", {}, async () => {
+    server.tool("memory_status", "Returns computed project status: task counts by status, decision counts by status, and top tags.", {}, async () => {
         const store = getStore();
         const taskCounts = {};
         const decisionCounts = {};
-        let noteCount = 0;
         let coreCount = 0;
         for (const item of store.items.values()) {
             switch (item.type) {
@@ -18,9 +17,6 @@ export function registerMemoryStatus(server) {
                     decisionCounts[status] = (decisionCounts[status] || 0) + 1;
                     break;
                 }
-                case "note":
-                    noteCount++;
-                    break;
                 case "core":
                     coreCount++;
                     break;
@@ -32,7 +28,7 @@ export function registerMemoryStatus(server) {
             .sort((a, b) => b.count - a.count)
             .slice(0, 20);
         let output = "# Project Status\n\n";
-        output += `**Total items:** ${store.items.size} (${coreCount} core, ${Object.values(taskCounts).reduce((a, b) => a + b, 0)} tasks, ${Object.values(decisionCounts).reduce((a, b) => a + b, 0)} decisions, ${noteCount} notes)\n\n`;
+        output += `**Total items:** ${store.items.size} (${coreCount} core, ${Object.values(taskCounts).reduce((a, b) => a + b, 0)} tasks, ${Object.values(decisionCounts).reduce((a, b) => a + b, 0)} decisions)\n\n`;
         if (Object.keys(taskCounts).length > 0) {
             output += "## Tasks\n";
             for (const [status, count] of Object.entries(taskCounts).sort()) {

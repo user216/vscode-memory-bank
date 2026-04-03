@@ -6,7 +6,7 @@ const FOUNDATIONAL_ORDER = ["projectbrief"];
 export function registerMemoryRecall(server) {
     server.tool("memory_recall", "Token-budgeted context retrieval — call once at session start to load project context efficiently. Returns memory bank content prioritized by strategy, trimmed to fit within a token budget. Parameters: budget (number, 500-100000, default 8000) and priority ('foundational' | 'recent' | 'active', default 'active'). Not for searching; use memory_search or memory_query for lookups.", {
         budget: z.number().min(500).max(100000).optional().describe("Token budget (default 8000). ~4000 for quick orientation, ~8000 for working context, ~16000+ for deep review. Content is truncated to fit."),
-        priority: z.enum(["foundational", "recent", "active"]).optional().describe("Priority strategy (default 'active'): 'foundational' = project overview first (projectbrief), then notes, tasks, decisions, 'recent' = most recently updated items first, 'active' = in-progress tasks + proposed decisions + projectbrief first"),
+        priority: z.enum(["foundational", "recent", "active"]).optional().describe("Priority strategy (default 'active'): 'foundational' = project overview first (projectbrief), then tasks, decisions, 'recent' = most recently updated items first, 'active' = in-progress tasks + proposed decisions + projectbrief first"),
     }, async ({ budget, priority }) => {
         const store = getStore();
         const tokenBudget = budget ?? 8000;
@@ -55,11 +55,7 @@ function getOrderedItems(all, strategy) {
                     return -1;
                 if (bIdx !== -1)
                     return 1;
-                // notes before tasks, tasks before decisions
-                if (a.type === "note" && b.type !== "note")
-                    return -1;
-                if (b.type === "note" && a.type !== "note")
-                    return 1;
+                // tasks before decisions
                 if (a.type === "task" && b.type === "decision")
                     return -1;
                 if (a.type === "decision" && b.type === "task")
@@ -96,10 +92,8 @@ function getActivePriority(item) {
         return 1;
     if (item.id === "projectbrief")
         return 2;
-    if (item.type === "note")
-        return 3;
     if (item.type === "task")
-        return 4;
-    return 5;
+        return 3;
+    return 4;
 }
 //# sourceMappingURL=memory-recall.js.map

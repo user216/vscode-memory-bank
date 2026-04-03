@@ -102,12 +102,12 @@ export function registerMemoryMigrateV1(server) {
             if (!fs.existsSync(filePath))
                 continue;
             if (dry_run) {
-                actions.push(`Delete deprecated: ${filename} (replaced by tasks/notes/memory_status in v2)`);
+                actions.push(`Delete deprecated: ${filename} (replaced by tasks/memory_status in v2)`);
                 // Warn if file has substantial content worth preserving
                 const content = fs.readFileSync(filePath, "utf-8");
                 const strippedContent = content.replace(/^---[\s\S]*?---\n?/, "").replace(/^#.*$/gm, "").replace(/\*\*\w[\w\s]*?:\*\*.*$/gm, "").trim();
                 if (strippedContent.length > 50) {
-                    warnings.push(`${filename} contains content that will be deleted. Consider saving valuable context to a NOTE (memory_create_note) before running migration.`);
+                    warnings.push(`${filename} contains content that will be deleted. Consider saving valuable context to an ADR (memory_create_decision) before running migration.`);
                 }
             }
             else {
@@ -148,7 +148,7 @@ export function registerMemoryMigrateV1(server) {
                 actions.push("Create: README.md (v2 navigation index)");
             }
             else {
-                const readmeContent = `---\ntype: structure\ntitle: Memory Bank Index\ncreated: ${today}\nupdated: ${today}\n---\n# Memory Bank\n\nProject map and navigation.\n\n- [[projectbrief]] — Project overview, goals, constraints\n\n## Tasks\n\n_Use \`memory_create_task\` or create TASK-NNN.md files._\n\n## Decisions\n\n_Use \`memory_create_decision\` or create ADR-NNNN.md files._\n\n## Notes\n\n_Use \`memory_create_note\` for knowledge items, patterns, and reference material._\n`;
+                const readmeContent = `---\ntype: structure\ntitle: Memory Bank Index\ncreated: ${today}\nupdated: ${today}\n---\n# Memory Bank\n\nProject map and navigation.\n\n- [[projectbrief]] — Project overview, goals, constraints\n\n## Tasks\n\n_Use \`memory_create_task\` or create TASK-NNN.md files._\n\n## Decisions\n\n_Use \`memory_create_decision\` or create ADR-NNNN.md files._\n`;
                 fs.writeFileSync(readmePath, readmeContent);
                 reindexFile(store, readmePath);
                 actions.push("Created: README.md (v2 navigation index)");

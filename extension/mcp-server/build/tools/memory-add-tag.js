@@ -5,7 +5,7 @@ import { getStore, reindexFile } from "../index-store.js";
 import { getMemoryBankPath } from "./shared-utils.js";
 export function registerMemoryAddTag(server) {
     server.tool("memory_add_tag", "Add a tag to an item's YAML frontmatter. If the item has no frontmatter, adds one. If the tag already exists, reports it. Tags help with categorization and are queryable via memory_tags.", {
-        id: z.string().describe("Item ID (e.g. 'TASK-001', 'ADR-0001', 'NOTE-001')"),
+        id: z.string().describe("Item ID (e.g. 'TASK-001', 'ADR-0001')"),
         tag: z.string().describe("Tag to add (without #). E.g. 'backend', 'performance'"),
     }, async ({ id, tag: rawTag }) => {
         const mbPath = getMemoryBankPath();

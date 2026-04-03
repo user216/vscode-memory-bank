@@ -14,17 +14,13 @@ export function deriveId(filePath) {
     const adrMatch = stem.match(/^(ADR-\d{4})/);
     if (adrMatch)
         return adrMatch[1];
-    // NOTE-001-some-title → NOTE-001
-    const noteMatch = stem.match(/^(NOTE-\d{3})/);
-    if (noteMatch)
-        return noteMatch[1];
     // projectbrief.md → projectbrief
     return stem;
 }
 export function deriveType(filePath, frontmatterType) {
     // YAML frontmatter type takes precedence
     if (frontmatterType) {
-        const validTypes = ["core", "task", "decision", "note", "structure"];
+        const validTypes = ["core", "task", "decision", "structure"];
         if (validTypes.includes(frontmatterType)) {
             return frontmatterType;
         }
@@ -40,15 +36,13 @@ export function deriveType(filePath, frontmatterType) {
         return "task";
     if (basename.match(/^ADR-\d{4}/))
         return "decision";
-    if (basename.match(/^NOTE-\d{3}/))
-        return "note";
-    // ADR-0015 §7: only projectbrief is "core"; README is "structure"; all others are "note"
+    // ADR-0015/ADR-0025: only projectbrief is "core"; README is "structure"
     const stem = basename.replace(/\.md$/, "");
     if (stem === "projectbrief")
         return "core";
     if (stem === "README")
         return "structure";
-    return "note";
+    return "structure";
 }
 export function deriveTitle(id, content) {
     // Try to get the first H1 heading
