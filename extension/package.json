@@ -163,7 +163,7 @@
   "scripts": {
     "vscode:prepublish": "npm run build:all",
     "build:all": "npm run build:mcp && npm run build:ext && npm run bundle-mcp",
-    "build:ext": "tsc -p ./",
+    "build:ext": "node ../scripts/sync-versions.js --sync && tsc -p ./",
     "build:mcp": "cd ../mcp && npm install && npm run build",
     "bundle-mcp": "node scripts/bundle-mcp.js",
     "build": "tsc -p ./",
