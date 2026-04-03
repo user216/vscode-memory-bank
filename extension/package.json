@@ -2,7 +2,7 @@
   "name": "vscode-memory-bank",
   "displayName": "Memory Bank",
   "description": "Persistent AI project memory across sessions — structured documentation, search, and knowledge graph for GitHub Copilot agents.",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "publisher": "narayanaya",
   "license": "Apache-2.0",
   "repository": {
@@ -32,7 +32,7 @@
       "activitybar": [
         {
           "id": "memory-bank",
-          "title": "Memory Bank v0.6.3",
+          "title": "Memory Bank v0.6.4",
           "icon": "media/memory-bank.svg"
         }
       ]

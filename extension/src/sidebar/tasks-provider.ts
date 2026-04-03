@@ -1,10 +1,26 @@
 import * as vscode from "vscode";
+import {
+  extractStatus,
+  extractTags,
+  extractTitle,
+  buildRelations,
+  buildDescription,
+  RelationItem,
+  type Relation,
+} from "./frontmatter-utils.js";
+
+const TASK_STATUS_ORDER: Record<string, number> = {
+  "in progress": 0,
+  pending: 1,
+  completed: 2,
+  abandoned: 3,
+};
 
 export class TasksTreeProvider
-  implements vscode.TreeDataProvider<TaskItem>
+  implements vscode.TreeDataProvider<TaskItem | RelationItem>
 {
   private _onDidChangeTreeData = new vscode.EventEmitter<
-    TaskItem | undefined
+    TaskItem | RelationItem | undefined
   >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
@@ -14,11 +30,21 @@ export class TasksTreeProvider
     this._onDidChangeTreeData.fire(undefined);
   }
 
-  getTreeItem(element: TaskItem): vscode.TreeItem {
+  getTreeItem(element: TaskItem | RelationItem): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(): Promise<TaskItem[]> {
+  async getChildren(
+    element?: TaskItem | RelationItem,
+  ): Promise<(TaskItem | RelationItem)[]> {
+    if (element instanceof RelationItem) return [];
+    if (element instanceof TaskItem) {
+      return element.relations.map(
+        (r) => new RelationItem(r.targetId, r.relationType, this.mbRoot),
+      );
+    }
+
+    // Root: collect all tasks
     const items: TaskItem[] = [];
 
     // v1: tasks/ subdirectory
@@ -33,9 +59,8 @@ export class TasksTreeProvider
         const content = Buffer.from(
           await vscode.workspace.fs.readFile(fileUri),
         ).toString("utf-8");
-        const status = extractStatus(content);
         const label = name.replace(".md", "");
-        items.push(new TaskItem(label, fileUri, status));
+        items.push(this.buildTaskItem(label, fileUri, content));
       }
     } catch {
       // tasks/ directory doesn't exist — try flat layout
@@ -48,58 +73,73 @@ export class TasksTreeProvider
         if (type !== vscode.FileType.File || !name.match(/^TASK-\d+.*\.md$/)) {
           continue;
         }
-        // Skip if we already found this in tasks/ subdir
         const label = name.replace(".md", "");
-        if (items.some((i) => i.label === label)) {
+        if (items.some((i) => i.fileId === label)) {
           continue;
         }
         const fileUri = vscode.Uri.joinPath(this.mbRoot, name);
         const content = Buffer.from(
           await vscode.workspace.fs.readFile(fileUri),
         ).toString("utf-8");
-        const status = extractStatus(content);
-        items.push(new TaskItem(label, fileUri, status));
+        items.push(this.buildTaskItem(label, fileUri, content));
       }
     } catch {
       // ignore
     }
 
+    // Sort by status priority
+    items.sort((a, b) => {
+      const ap = TASK_STATUS_ORDER[a.status.toLowerCase()] ?? 4;
+      const bp = TASK_STATUS_ORDER[b.status.toLowerCase()] ?? 4;
+      return ap - bp;
+    });
+
     return items;
   }
-}
 
-/** Extract status from YAML frontmatter or **Status:** metadata. */
-function extractStatus(content: string): string {
-  // Try YAML frontmatter first
-  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (fmMatch) {
-    const statusLine = fmMatch[1].match(/^status\s*:\s*(.+)$/m);
-    if (statusLine) {
-      return statusLine[1].trim().replace(/^["']|["']$/g, "");
-    }
+  private buildTaskItem(fileId: string, fileUri: vscode.Uri, content: string): TaskItem {
+    const status = extractStatus(content);
+    const tags = extractTags(content);
+    const title = extractTitle(content, fileId);
+    const relations = buildRelations(content, fileId);
+    return new TaskItem(fileId, fileUri, status, title, tags, relations, this.mbRoot);
   }
-
-  // Fall back to **Status:** pattern
-  const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-  if (statusMatch) return statusMatch[1].trim();
-
-  // Fall back to ## Status: heading pattern
-  const headingMatch = content.match(/^##\s+Status:\s*(.+)$/m);
-  if (headingMatch) return headingMatch[1].trim();
-
-  return "Unknown";
 }
 
 class TaskItem extends vscode.TreeItem {
-  constructor(
-    public readonly label: string,
-    public readonly fileUri: vscode.Uri,
-    public readonly status: string,
-  ) {
-    super(label, vscode.TreeItemCollapsibleState.None);
+  public readonly relations: Relation[];
+  public readonly status: string;
+  public readonly fileId: string;
 
-    this.description = status;
-    this.tooltip = `${label} — ${status}`;
+  constructor(
+    fileId: string,
+    public readonly fileUri: vscode.Uri,
+    status: string,
+    title: string,
+    tags: string[],
+    relations: Relation[],
+    mbRoot: vscode.Uri,
+  ) {
+    super(
+      title,
+      relations.length > 0
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None,
+    );
+    this.fileId = fileId;
+    this.status = status;
+    this.relations = relations;
+
+    const descParts: string[] = [];
+    if (title !== fileId) descParts.push(fileId);
+    descParts.push(status);
+    if (tags.length > 0) descParts.push(tags.join(", "));
+    this.description = buildDescription(descParts);
+
+    const tooltipLines = [`${fileId}: ${title}`, `Status: ${status}`];
+    if (tags.length > 0) tooltipLines.push(`Tags: ${tags.join(", ")}`);
+    if (relations.length > 0) tooltipLines.push(`Relations: ${relations.length}`);
+    this.tooltip = tooltipLines.join("\n");
 
     const iconId = statusIcon(status);
     const colorId = statusColor(status);

@@ -1,5 +1,17 @@
 # Changelog — VS Code Extension
 
+## 0.6.4
+
+### Added
+- **Titles in sidebar** — Tasks, Decisions, and Notes now show the `title:` from YAML frontmatter (or H1 heading) as the label instead of bare file IDs (ADR-0023)
+- **Tags in Tasks & Decisions** — tags from YAML frontmatter displayed in the description alongside status, separated by `·`
+- **Status-based sorting** — Tasks sort In Progress → Pending → Completed → Abandoned; Decisions sort Proposed → Accepted → Deprecated → Superseded → Rejected
+- **Expandable relations** — items referencing other items (via `related:` frontmatter, cross-references in body text, or `[[wikilinks]]`) expand to show clickable relation children with purple link icons
+
+### Changed
+- **Shared `frontmatter-utils.ts`** — consolidated duplicated `extractStatus()` and `extractTags()` from 3 providers into a shared module; added `extractTitle()`, `buildRelations()`, `buildDescription()`, and `RelationItem` class
+- **Tree provider type signatures** — all 3 providers now use `TreeDataProvider<*Item | RelationItem>` union type to support expandable children
+
 ## 0.4.0
 
 ### Added

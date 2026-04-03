@@ -1,10 +1,18 @@
 import * as vscode from "vscode";
+import {
+  extractTags,
+  extractTitle,
+  buildRelations,
+  buildDescription,
+  RelationItem,
+  type Relation,
+} from "./frontmatter-utils.js";
 
 export class NotesTreeProvider
-  implements vscode.TreeDataProvider<NoteItem>
+  implements vscode.TreeDataProvider<NoteItem | RelationItem>
 {
   private _onDidChangeTreeData = new vscode.EventEmitter<
-    NoteItem | undefined
+    NoteItem | RelationItem | undefined
   >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
@@ -14,14 +22,23 @@ export class NotesTreeProvider
     this._onDidChangeTreeData.fire(undefined);
   }
 
-  getTreeItem(element: NoteItem): vscode.TreeItem {
+  getTreeItem(element: NoteItem | RelationItem): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(): Promise<NoteItem[]> {
+  async getChildren(
+    element?: NoteItem | RelationItem,
+  ): Promise<(NoteItem | RelationItem)[]> {
+    if (element instanceof RelationItem) return [];
+    if (element instanceof NoteItem) {
+      return element.relations.map(
+        (r) => new RelationItem(r.targetId, r.relationType, this.mbRoot),
+      );
+    }
+
+    // Root: scan for NOTE-*.md files
     const items: NoteItem[] = [];
 
-    // Notes are v2-only — scan root for NOTE-*.md files
     try {
       const entries = await vscode.workspace.fs.readDirectory(this.mbRoot);
       for (const [name, type] of entries) {
@@ -32,9 +49,11 @@ export class NotesTreeProvider
         const content = Buffer.from(
           await vscode.workspace.fs.readFile(fileUri),
         ).toString("utf-8");
+        const fileId = name.replace(".md", "");
         const tags = extractTags(content);
-        const label = name.replace(".md", "");
-        items.push(new NoteItem(label, fileUri, tags));
+        const title = extractTitle(content, fileId);
+        const relations = buildRelations(content, fileId);
+        items.push(new NoteItem(fileId, fileUri, tags, title, relations, this.mbRoot));
       }
     } catch {
       // ignore
@@ -44,49 +63,34 @@ export class NotesTreeProvider
   }
 }
 
-/** Extract tags from YAML frontmatter. */
-function extractTags(content: string): string[] {
-  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!fmMatch) return [];
-
-  const tags: string[] = [];
-  const lines = fmMatch[1].split(/\r?\n/);
-  let inTags = false;
-
-  for (const line of lines) {
-    // tags: [inline, array]
-    const inlineMatch = line.match(/^tags\s*:\s*\[(.+)\]/);
-    if (inlineMatch) {
-      return inlineMatch[1].split(",").map((t) => t.trim().replace(/^["']|["']$/g, ""));
-    }
-    // tags:
-    if (/^tags\s*:/.test(line)) {
-      inTags = true;
-      continue;
-    }
-    if (inTags) {
-      const itemMatch = line.match(/^\s+-\s+(.+)/);
-      if (itemMatch) {
-        tags.push(itemMatch[1].trim().replace(/^["']|["']$/g, ""));
-      } else {
-        inTags = false;
-      }
-    }
-  }
-
-  return tags;
-}
-
 class NoteItem extends vscode.TreeItem {
+  public readonly relations: Relation[];
+
   constructor(
-    public readonly label: string,
+    public readonly fileId: string,
     public readonly fileUri: vscode.Uri,
     public readonly tags: string[],
+    title: string,
+    relations: Relation[],
+    mbRoot: vscode.Uri,
   ) {
-    super(label, vscode.TreeItemCollapsibleState.None);
+    super(
+      title,
+      relations.length > 0
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None,
+    );
+    this.relations = relations;
 
-    this.description = tags.length > 0 ? tags.join(", ") : "";
-    this.tooltip = `${label}${tags.length > 0 ? ` — ${tags.join(", ")}` : ""}`;
+    const descParts: string[] = [];
+    if (title !== fileId) descParts.push(fileId);
+    if (tags.length > 0) descParts.push(tags.join(", "));
+    this.description = buildDescription(descParts);
+
+    const tooltipLines = [`${fileId}: ${title}`];
+    if (tags.length > 0) tooltipLines.push(`Tags: ${tags.join(", ")}`);
+    if (relations.length > 0) tooltipLines.push(`Relations: ${relations.length}`);
+    this.tooltip = tooltipLines.join("\n");
 
     this.iconPath = new vscode.ThemeIcon(
       "note",

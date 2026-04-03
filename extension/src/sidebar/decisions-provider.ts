@@ -1,10 +1,27 @@
 import * as vscode from "vscode";
+import {
+  extractStatus,
+  extractTags,
+  extractTitle,
+  buildRelations,
+  buildDescription,
+  RelationItem,
+  type Relation,
+} from "./frontmatter-utils.js";
+
+const DECISION_STATUS_ORDER: Record<string, number> = {
+  proposed: 0,
+  accepted: 1,
+  deprecated: 2,
+  superseded: 3,
+  rejected: 4,
+};
 
 export class DecisionsTreeProvider
-  implements vscode.TreeDataProvider<DecisionItem>
+  implements vscode.TreeDataProvider<DecisionItem | RelationItem>
 {
   private _onDidChangeTreeData = new vscode.EventEmitter<
-    DecisionItem | undefined
+    DecisionItem | RelationItem | undefined
   >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
@@ -14,11 +31,21 @@ export class DecisionsTreeProvider
     this._onDidChangeTreeData.fire(undefined);
   }
 
-  getTreeItem(element: DecisionItem): vscode.TreeItem {
+  getTreeItem(element: DecisionItem | RelationItem): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(): Promise<DecisionItem[]> {
+  async getChildren(
+    element?: DecisionItem | RelationItem,
+  ): Promise<(DecisionItem | RelationItem)[]> {
+    if (element instanceof RelationItem) return [];
+    if (element instanceof DecisionItem) {
+      return element.relations.map(
+        (r) => new RelationItem(r.targetId, r.relationType, this.mbRoot),
+      );
+    }
+
+    // Root: collect all decisions
     const items: DecisionItem[] = [];
 
     // v1: decisions/ subdirectory
@@ -33,9 +60,8 @@ export class DecisionsTreeProvider
         const content = Buffer.from(
           await vscode.workspace.fs.readFile(fileUri),
         ).toString("utf-8");
-        const status = extractStatus(content);
         const label = name.replace(".md", "");
-        items.push(new DecisionItem(label, fileUri, status));
+        items.push(this.buildDecisionItem(label, fileUri, content));
       }
     } catch {
       // decisions/ directory doesn't exist — try flat layout
@@ -48,58 +74,73 @@ export class DecisionsTreeProvider
         if (type !== vscode.FileType.File || !name.match(/^ADR-\d+.*\.md$/)) {
           continue;
         }
-        // Skip if we already found this in decisions/ subdir
         const label = name.replace(".md", "");
-        if (items.some((i) => i.label === label)) {
+        if (items.some((i) => i.fileId === label)) {
           continue;
         }
         const fileUri = vscode.Uri.joinPath(this.mbRoot, name);
         const content = Buffer.from(
           await vscode.workspace.fs.readFile(fileUri),
         ).toString("utf-8");
-        const status = extractStatus(content);
-        items.push(new DecisionItem(label, fileUri, status));
+        items.push(this.buildDecisionItem(label, fileUri, content));
       }
     } catch {
       // ignore
     }
 
+    // Sort by status priority
+    items.sort((a, b) => {
+      const ap = DECISION_STATUS_ORDER[a.status.toLowerCase()] ?? 5;
+      const bp = DECISION_STATUS_ORDER[b.status.toLowerCase()] ?? 5;
+      return ap - bp;
+    });
+
     return items;
   }
-}
 
-/** Extract status from YAML frontmatter or **Status:** metadata. */
-function extractStatus(content: string): string {
-  // Try YAML frontmatter first
-  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (fmMatch) {
-    const statusLine = fmMatch[1].match(/^status\s*:\s*(.+)$/m);
-    if (statusLine) {
-      return statusLine[1].trim().replace(/^["']|["']$/g, "");
-    }
+  private buildDecisionItem(fileId: string, fileUri: vscode.Uri, content: string): DecisionItem {
+    const status = extractStatus(content);
+    const tags = extractTags(content);
+    const title = extractTitle(content, fileId);
+    const relations = buildRelations(content, fileId);
+    return new DecisionItem(fileId, fileUri, status, title, tags, relations, this.mbRoot);
   }
-
-  // Fall back to **Status:** pattern
-  const statusMatch = content.match(/\*\*Status:\*\*\s*(.+)/);
-  if (statusMatch) return statusMatch[1].trim();
-
-  // Fall back to ## Status: heading pattern
-  const headingMatch = content.match(/^##\s+Status:\s*(.+)$/m);
-  if (headingMatch) return headingMatch[1].trim();
-
-  return "Unknown";
 }
 
 class DecisionItem extends vscode.TreeItem {
-  constructor(
-    public readonly label: string,
-    public readonly fileUri: vscode.Uri,
-    public readonly status: string,
-  ) {
-    super(label, vscode.TreeItemCollapsibleState.None);
+  public readonly relations: Relation[];
+  public readonly status: string;
+  public readonly fileId: string;
 
-    this.description = status;
-    this.tooltip = `${label} — ${status}`;
+  constructor(
+    fileId: string,
+    public readonly fileUri: vscode.Uri,
+    status: string,
+    title: string,
+    tags: string[],
+    relations: Relation[],
+    mbRoot: vscode.Uri,
+  ) {
+    super(
+      title,
+      relations.length > 0
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None,
+    );
+    this.fileId = fileId;
+    this.status = status;
+    this.relations = relations;
+
+    const descParts: string[] = [];
+    if (title !== fileId) descParts.push(fileId);
+    descParts.push(status);
+    if (tags.length > 0) descParts.push(tags.join(", "));
+    this.description = buildDescription(descParts);
+
+    const tooltipLines = [`${fileId}: ${title}`, `Status: ${status}`];
+    if (tags.length > 0) tooltipLines.push(`Tags: ${tags.join(", ")}`);
+    if (relations.length > 0) tooltipLines.push(`Relations: ${relations.length}`);
+    this.tooltip = tooltipLines.join("\n");
 
     const iconId = statusIcon(status);
     const colorId = statusColor(status);

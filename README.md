@@ -1,12 +1,48 @@
 # vscode-memory-bank
 
-A 7-layer memory bank toolkit for **VS Code + GitHub Copilot + Claude Agent SDK**. Gives AI coding sessions persistent project context that survives across sessions.
+Persistent AI project memory for **VS Code + GitHub Copilot + Claude Code**. Gives AI coding sessions structured context that survives across sessions — tasks, decisions, knowledge notes, and a knowledge graph, all in markdown.
 
-Built on the [original memory-bank instruction](https://github.com/cline/cline-docs/blob/main/prompting/custom%20instructions%20library/cline_docs/cline_docs.md) from the awesome-copilot community — fully backward-compatible, with additive enhancements only.
+## The Problem
 
-## Problem
+AI assistants lose all context between sessions. Every new chat starts from zero — you re-explain your architecture, re-describe your conventions, re-state what you're working on. Memory Bank solves this with a `memory-bank/` folder of structured markdown files that your AI reads at session start and updates as you work.
 
-AI assistants lose all context between sessions. Every new chat starts from zero. Existing solutions are either too simple (a single instruction file) or too complex (full database server). This project fills the gap with a layered approach: start with a single file, add capabilities as needed.
+## Quick Start
+
+### VS Code Extension (recommended)
+
+1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=memory-bank.vscode-memory-bank)
+2. Open a workspace
+3. Click **Initialize Memory Bank** in the sidebar
+4. The MCP server is auto-configured for GitHub Copilot — no manual setup needed
+5. For Claude Code, click **MCP Setup** in the sidebar and copy the config snippet
+
+### Copilot Agent Plugin (without extension)
+
+For teams that want skills, prompts, agents, and hooks without the VS Code extension:
+
+```bash
+git submodule add https://github.com/user216/memory-bank-plugin .github/copilot/plugins/memory-bank
+```
+
+Then add to `.vscode/settings.json`:
+
+```json
+{
+  "chat.pluginLocations": [".github/copilot/plugins/memory-bank"]
+}
+```
+
+### Manual Setup (layers 0-2)
+
+```bash
+mkdir -p .github/instructions
+cp instructions/memory-bank.instructions.md .github/instructions/
+
+mkdir -p .github/prompts
+cp prompts/*.prompt.md .github/prompts/
+```
+
+This gives you slash commands: `/memory-init`, `/memory-update`, `/memory-review`, `/memory-task`.
 
 ## Architecture
 
@@ -19,129 +55,81 @@ AI assistants lose all context between sessions. Every new chat starts from zero
 | 2 | Prompt Files | `/memory-init`, `/memory-update`, `/memory-review`, `/memory-task` commands | Built |
 | 3 | Custom Agents | Memory Planner (plan mode) + Memory Worker (act mode) with handoffs | Built |
 | 4 | Hooks | Session lifecycle automation (inject context, preserve on compact, save on exit) | Built |
-| 5 | MCP Server | Structured search, token budgeting, knowledge graph (SQLite + FTS5) | Built |
-| 6 | VS Code Extension | Sidebar UI, status bar, file watchers, one-click install | Planned |
-
-See [docs/architecture.md](docs/architecture.md) for the full design and [docs/layers/](docs/layers/) for per-layer documentation.
-
-## Quick Start
-
-### Layer 0 only (simplest)
-
-Copy the instruction file to your project:
-
-```bash
-mkdir -p .github/instructions
-cp instructions/memory-bank.instructions.md .github/instructions/
-```
-
-Then tell your AI: "initialize memory bank". It will create the `memory-bank/` folder with all core files.
-
-### Layers 0-2 (recommended starting point)
-
-```bash
-mkdir -p .github/instructions
-cp instructions/memory-bank.instructions.md .github/instructions/
-
-mkdir -p .github/prompts
-cp prompts/*.prompt.md .github/prompts/
-```
-
-This gives you the base behavior plus four slash commands:
-- `/memory-init` — initialize memory bank for a new project
-- `/memory-update` — update all memory files to reflect current state
-- `/memory-review` — read and summarize full project context
-- `/memory-task` — create, update, or query tasks
-
-### Layers 0-4 (full current feature set)
-
-```bash
-mkdir -p .github/instructions
-cp instructions/memory-bank.instructions.md .github/instructions/
-
-mkdir -p .github/prompts
-cp prompts/*.prompt.md .github/prompts/
-
-mkdir -p .github/copilot/agents
-cp agents/*.agent.md .github/copilot/agents/
-
-mkdir -p .github/copilot/skills
-cp -r skills/managing-memory-bank .github/copilot/skills/
-
-cp hooks/memory-hooks.json .vscode/memory-hooks.json
-cp -r hooks/scripts .vscode/hooks-scripts
-```
-
-> **Note:** Hook scripts require `jq` to be installed (`sudo apt install jq`).
+| 5 | MCP Server | In-memory MiniSearch index, 21 tools, knowledge graph, ADR verification | Built |
+| 6 | VS Code Extension | Sidebar UI, status bar, knowledge graph, MCP auto-config | Built |
 
 ## Memory Bank Structure
 
-The memory bank stores context in markdown files inside `memory-bank/`:
+Files use YAML frontmatter for metadata and a flat naming convention:
 
 ```
 memory-bank/
-├── projectbrief.md        # Foundation — goals, scope, requirements
-├── productContext.md       # Why the project exists, user problems
-├── systemPatterns.md       # Architecture, design patterns, conventions
-├── techContext.md          # Tech stack, dependencies, constraints
-├── activeContext.md        # Current focus, recent changes, next steps
-├── progress.md             # What works, what remains, known issues
-├── tasks/                  # Individual task files with progress logs
-│   └── _index.md
-└── decisions/              # ADRs — immutable decision history
-    └── _index.md
+  projectbrief.md        # Project goals, scope, requirements
+  README.md              # Navigation index with wikilinks
+  TASK-001.md            # Task files with status, tags, progress logs
+  ADR-0001.md            # Architecture Decision Records
+  NOTE-001.md            # Knowledge notes with tags and cross-references
 ```
 
-Files form a dependency hierarchy: `projectbrief.md` is the foundation, all others derive from it. The agent reads all files at session start and updates them as work progresses.
+Example frontmatter:
 
-## Agents
-
-Two custom agents with handoff support:
-
-- **Memory Planner** — reads context, develops implementation strategy, never edits source code. Hands off to Worker.
-- **Memory Worker** — executes plans, writes code, updates memory bank with progress. Hands off back to Planner.
-
-## Model Configuration
-
-Agents do **not** pin a model version — they inherit your VS Code Copilot default. The project is designed for **Claude Opus (latest)**.
-
-`memory-bank-config.json` documents the recommended model. If you want to explicitly pin a version in agent files, use:
-
-```bash
-./scripts/update-model.sh "Claude Opus 5"
+```yaml
+---
+type: task
+status: In Progress
+tags: [backend, auth]
+related: [ADR-0001, NOTE-003]
+created: 2026-03-15
+---
+# TASK-014: Implement OAuth2 login flow
 ```
 
-See [ADR-0004](memory-bank/decisions/ADR-0004-no-model-version-pinning.md) for the rationale.
+## VS Code Extension
 
-## Requirements
+The extension provides:
 
-- VS Code with GitHub Copilot extension
-- Claude Agent SDK (Claude models only)
-- `jq` for hook scripts (Layer 4)
-- Node.js 20+ for MCP server (Layer 5)
+- **Sidebar** — browse tasks (sorted by status), decisions, notes, and files with titles, tags, and expandable relations
+- **Knowledge Graph** — interactive force-directed visualization of item relationships
+- **Status Bar** — shows current focus derived from in-progress tasks
+- **MCP Setup** — auto-configures the MCP server for GitHub Copilot; one-click copy for Claude Code
 
-## MCP Server (Layer 5)
+## MCP Server
 
-MCP tools for structured memory access:
+21 tools for structured memory access. The server uses an in-memory MiniSearch index with BM25 ranking — zero native dependencies.
 
 | Tool | Purpose |
 |------|---------|
-| `memory_search` | Full-text search with FTS5 (AND, OR, NOT, prefix*) |
-| `memory_query` | Structured query by type, status, date range |
 | `memory_recall` | Token-budgeted context retrieval with priority strategies |
-| `memory_link` | Create typed relationships between items |
-| `memory_unlink` | Delete a relationship between two items |
-| `memory_update_link` | Update the relation type of an existing link |
-| `memory_graph` | Traverse knowledge graph from a starting item |
-| `memory_schema` | Self-describing schema for tool discovery |
+| `memory_search` | Full-text search with BM25 ranking, prefix/fuzzy matching |
+| `memory_query` | Structured query by type, status, date range |
+| `memory_create_task` | Create task with auto-generated TASK-NNN ID |
+| `memory_create_decision` | Create ADR with standard format and auto-generated ID |
+| `memory_create_note` | Create knowledge note with tags and related links |
+| `memory_update_status` | Update task/decision status with timestamped progress logs |
+| `memory_bulk_update_status` | Batch status updates for multiple items |
+| `memory_add_tag` | Add a tag to any item's YAML frontmatter |
+| `memory_update_decision` | Update ADR content (context, decision, alternatives) |
+| `memory_import_decisions` | Import external ADR files into the memory bank |
+| `memory_link` | Create typed directional relationship between items |
+| `memory_unlink` | Remove a relationship between items |
+| `memory_update_link` | Change the relation type of an existing link |
+| `memory_graph` | BFS traversal of the knowledge graph with configurable depth |
+| `memory_tags` | List all tags with counts, or items with a specific tag |
+| `memory_status` | Project status: task/decision counts by status |
+| `memory_schema` | Self-describing data model for tool discovery |
+| `memory_verify_decisions` | Run compliance assertions from accepted ADR `## Verification` sections |
+| `memory_migrate_v1` | Migrate v1 layout (subdirectories) to v2 flat layout |
+| `memory_save_context` | *(deprecated)* — use `memory_update_status` with `log_entry` |
 
-Build and configure:
+### Standalone MCP Setup
+
+If using the MCP server without the extension:
 
 ```bash
-cd mcp && npm install && npx tsc
+cd mcp && npm install && npm run build
 ```
 
-Add to `.vscode/mcp.json` in your project:
+Add to `.vscode/mcp.json`:
 
 ```json
 {
@@ -157,35 +145,43 @@ Add to `.vscode/mcp.json` in your project:
 }
 ```
 
+## Agents
+
+Two custom agents with handoff support:
+
+- **Memory Planner** — reads context, develops implementation strategy, never edits source code
+- **Memory Worker** — executes plans, writes code, updates memory bank with progress
+
+## Requirements
+
+- VS Code 1.95+ with GitHub Copilot or Claude Code
+- Node.js 20+ (bundled with extension; needed standalone for MCP server)
+
 ## Testing
 
 ```bash
+# MCP server tests
 cd mcp && npm test
-```
 
-65 tests across 3 test files:
-- **parser.test.ts** — 28 tests: ID derivation, type inference, metadata extraction, sections, cross-references
-- **db-sync.test.ts** — 17 tests: schema creation, file sync, FTS5 indexing, cross-ref link detection, re-sync
-- **tools.test.ts** — 20 tests: search, query, recall strategies, link creation, graph traversal, schema
+# Extension bundle tests
+cd extension && npm test
+```
 
 ## Design Decisions
 
-Documented as ADRs in `memory-bank/decisions/`:
+Documented as ADRs in `memory-bank/`:
 
-- **ADR-0001** — Additive compatibility with original instruction (never delete features)
+- **ADR-0001** — Additive compatibility with original memory bank instruction
 - **ADR-0002** — 7-layer progressive enhancement architecture
-- **ADR-0003** — Memory bank replaces PRD; ADRs kept for immutable decision history
-- **ADR-0004** — No model version pinning in agent files
+- **ADR-0015** — v2 Obsidian-Zettelkasten architecture (flat layout, YAML frontmatter, wikilinks)
+- **ADR-0016** — MiniSearch + gray-matter (zero native deps, replaced SQLite)
+- **ADR-0017** — Plugin doesn't bundle MCP server (extension delivers it)
+- **ADR-0021** — 3-layer ADR compliance verification
+- **ADR-0022** — MCP server key renamed to `mbank-{workspace}`
 
 ## Research Sources
 
-This project synthesizes ideas from 9+ existing memory/context solutions:
-
-- [awesome-copilot memory-bank instruction](https://github.com/cline/cline-docs) — original instruction (Layer 0 foundation)
-- [GreatScottyMac/context-portal](https://github.com/GreatScottyMac/context-portal) — ADR integration, structured context
-- [mem0ai/mem0](https://github.com/mem0ai/mem0) — intelligent memory layer patterns
-- [mkreyman/mcp-memory-keeper](https://github.com/mkreyman/mcp-memory-keeper) — MCP-based memory persistence
-- And others listed in [docs/architecture.md](docs/architecture.md)
+Built on the [original memory-bank instruction](https://github.com/cline/cline-docs/blob/main/prompting/custom%20instructions%20library/cline_docs/cline_docs.md) from the awesome-copilot community, with ideas from [context-portal](https://github.com/GreatScottyMac/context-portal), [mem0](https://github.com/mem0ai/mem0), [mcp-memory-keeper](https://github.com/mkreyman/mcp-memory-keeper), and others listed in [docs/architecture.md](docs/architecture.md).
 
 ## License
 
